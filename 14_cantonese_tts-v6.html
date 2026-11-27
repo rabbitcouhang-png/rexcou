@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第14屆 控煙與健康校際問答比賽 — 總決賽系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #172554 0%, #090d16 65%, #020617 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* 冠軍黃金流光漸變 */
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #fef08a 0%, #facc15 40%, #eab308 70%, #fef9c3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 18px rgba(250, 204, 21, 0.25);
+        }
+
+        .gold-panel-border {
+            border: 2px solid transparent;
+            background-image: linear-gradient(#0f172a, #0f172a), linear-gradient(135deg, #fde047, #b45309, #fef08a);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+        }
+
+        /* 3D 黃金寶箱卡片動畫 */
+        .chest-tile {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: linear-gradient(155deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.98));
+        }
+        .chest-tile:not(:disabled):hover {
+            transform: translateY(-7px) scale(1.03);
+            box-shadow: 0 14px 28px -6px rgba(250, 204, 21, 0.35);
+            border-color: #facc15;
+        }
+        .chest-pulse {
+            animation: chestAura 2.4s infinite ease-in-out;
+        }
+        @keyframes chestAura {
+            0%, 100% { filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.35)); }
+            50% { filter: drop-shadow(0 0 16px rgba(250, 204, 21, 0.85)); }
+        }
+
+        /* 選項與搶答按鈕微動效 */
+        .choice-btn {
+            transition: all 0.18s ease;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(6px);
+            background: rgba(250, 204, 21, 0.14);
+            border-color: #facc15;
+        }
+
+        .buzzer-pad {
+            transition: all 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .buzzer-pad:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.02);
+        }
+        .buzzer-pad:active:not(:disabled) {
+            transform: translateY(2px) scale(0.98);
+        }
+
+        @keyframes lockedRing {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.75); }
+            50% { box-shadow: 0 0 30px 6px rgba(250, 204, 21, 0.35); }
+        }
+        .team-locked-ring {
+            animation: lockedRing 1.4s infinite;
+        }
+
+        @keyframes fadePop {
+            0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-pop {
+            animation: fadePop 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 70;
+        }
+    </style>
+</head>
+<body class="selection:bg-yellow-400 selection:text-slate-950">
+
+    <!-- 慶祝彩帶畫布 -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- ============================================================================
+         全局頂部常駐記分板與裁判控制台
+         ============================================================================ -->
+    <header class="sticky top-0 z-40 bg-slate-950/92 backdrop-blur-md border-b border-yellow-500/30 shadow-2xl">
+        <div class="max-w-7xl mx-auto px-3 sm:px-5 py-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <!-- 賽事標題與當前賽段 -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-yellow-400 via-amber-500 to-emerald-500 flex items-center justify-center shadow-lg text-slate-950 font-black text-xl">
+                        🏆
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-base sm:text-xl font-black tracking-wide gold-gradient-text">
+                                第14屆 控煙與健康校際問答比賽
+                            </h1>
+                            <span id="global-stage-badge" class="px-2.5 py-0.5 rounded-full bg-indigo-500/25 border border-indigo-400/40 text-indigo-300 text-[11px] sm:text-xs font-black">
+                                賽前準備
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 hidden sm:block">無煙澳門健康生活協會主辦 • 總決賽系統（一擲千金 ＋ 3組極速搶答賽）</p>
+                    </div>
+                </div>
+
+                <!-- 實時 3 組總分記分板（點擊隊名可隨時修改） -->
+                <div id="global-scoreboard" class="flex items-center gap-2 sm:gap-3">
+                    <!-- 第1組 -->
+                    <div id="top-team-box-0" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-500/50 transition-all">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                        <span id="top-team-name-0" onclick="promptRenameTeam(0)" title="點擊修改隊名" class="text-xs sm:text-sm font-bold text-rose-200 cursor-pointer hover:underline truncate max-w-[72px] sm:max-w-[105px]">第一組</span>
+                        <span id="top-team-score-0" class="text-base sm:text-xl font-black text-white tabular-nums">0</span>
+                    </div>
+
+                    <!-- 第2組 -->
+                    <div id="top-team-box-1" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-500/50 transition-all">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                        <span id="top-team-name-1" onclick="promptRenameTeam(1)" title="點擊修改隊名" class="text-xs sm:text-sm font-bold text-amber-200 cursor-pointer hover:underline truncate max-w-[72px] sm:max-w-[105px]">第二組</span>
+                        <span id="top-team-score-1" class="text-base sm:text-xl font-black text-white tabular-nums">0</span>
+                    </div>
+
+                    <!-- 第3組 -->
+                    <div id="top-team-box-2" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/50 transition-all">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+                        <span id="top-team-name-2" onclick="promptRenameTeam(2)" title="點擊修改隊名" class="text-xs sm:text-sm font-bold text-emerald-200 cursor-pointer hover:underline truncate max-w-[72px] sm:max-w-[105px]">第三組</span>
+                        <span id="top-team-score-2" class="text-base sm:text-xl font-black text-white tabular-nums">0</span>
+                    </div>
+                </div>
+
+                <!-- 裁判後台 / 撤銷 / 音效按鈕 -->
+                <div class="flex items-center gap-1.5">
+                    <button id="btn-global-undo" onclick="undoLastAction()" disabled title="撤銷上一步操作"
+                        class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed border border-slate-700 text-slate-200 text-xs font-bold transition">
+                        ↩ 撤銷
+                    </button>
+                    <button onclick="openRefereeModal()"
+                        class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-indigo-900/70 border border-slate-700 hover:border-indigo-400 text-slate-100 text-xs font-bold transition">
+                        ⚙️ 裁判後台 / 題庫
+                    </button>
+                    <button id="btn-sound" onclick="toggleSound()" title="開關音效"
+                        class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-yellow-400 text-sm transition">
+                        🔊
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-3 sm:px-5 py-6">
+
+        <!-- ========================================================================
+             畫面 0：全局賽前設定大廳
+             ======================================================================== -->
+        <section id="view-setup" class="max-w-4xl mx-auto animate-fade-pop">
+            <div class="gold-panel-border rounded-3xl p-6 sm:p-9 shadow-2xl">
+                <div class="text-center mb-7">
+                    <span class="inline-block px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold mb-2">
+                        內建 430 題完整原題集題庫 • 全程 430 題（380+50）100% 隨機不重複
+                    </span>
+                    <h2 class="text-2xl sm:text-4xl font-black text-white mb-2">總決賽賽前隊伍登錄與賽制確認</h2>
+                    <p class="text-slate-400 text-sm sm:text-base">請輸入三支參賽學校/隊伍名稱，比賽將依序進行「階段一：一擲千金」與「階段二：極速搶答賽」</p>
+                </div>
+
+                <!-- 3支參賽隊伍名稱設定 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-7">
+                    <div class="bg-rose-950/35 border-2 border-rose-500/50 rounded-2xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-rose-600 text-white text-xs font-black">第 1 組（紅隊）</span>
+                            <span class="text-xs text-rose-300 font-mono">搶答鍵: [1] / [Q]</span>
+                        </div>
+                        <input id="setup-name-0" type="text" value="第一組" maxlength="16"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-rose-500/40 text-white font-bold text-base focus:outline-none focus:border-rose-400"
+                            placeholder="輸入第一組名稱">
+                    </div>
+
+                    <div class="bg-amber-950/35 border-2 border-amber-500/50 rounded-2xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">第 2 組（黃隊）</span>
+                            <span class="text-xs text-amber-300 font-mono">搶答鍵: [2] / [P]</span>
+                        </div>
+                        <input id="setup-name-1" type="text" value="第二組" maxlength="16"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-white font-bold text-base focus:outline-none focus:border-amber-400"
+                            placeholder="輸入第二組名稱">
+                    </div>
+
+                    <div class="bg-emerald-950/35 border-2 border-emerald-500/50 rounded-2xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-black">第 3 組（綠隊）</span>
+                            <span class="text-xs text-emerald-300 font-mono">搶答鍵: [3] / [M]</span>
+                        </div>
+                        <input id="setup-name-2" type="text" value="第三組" maxlength="16"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 text-white font-bold text-base focus:outline-none focus:border-emerald-400"
+                            placeholder="輸入第三組名稱">
+                    </div>
+                </div>
+
+                <!-- 兩大階段賽制一覽卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-7">
+                    <div class="bg-slate-900/90 border border-yellow-500/35 rounded-2xl p-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">💰</span>
+                            <h3 class="text-lg font-black text-yellow-400">階段一：一擲千金（19個寶箱・共380題）</h3>
+                        </div>
+                        <ul class="text-xs sm:text-sm text-slate-300 space-y-1.5 leading-relaxed">
+                            <li>• 設有 <strong>19 個黃金寶箱</strong>（1–19 號），3組輪流選箱挑戰，主持人可隨時切換組別或進入階段二。</li>
+                            <li>• 每個寶箱內含 <strong>20 條選擇題</strong>（19箱共 <strong>380 題</strong>，彼此完全不重複）。</li>
+                            <li>• 計分規則：<strong class="text-emerald-400">答對 +10 分</strong>，<strong class="text-slate-200">答錯不扣分（0分）</strong>。</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-sky-500/35 rounded-2xl p-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">⚡</span>
+                            <h3 class="text-lg font-black text-sky-400">階段二：3組極速搶答賽（50題）</h3>
+                        </div>
+                        <ul class="text-xs sm:text-sm text-slate-300 space-y-1.5 leading-relaxed">
+                            <li>• 延續階段一三組總分直接開戰，題目與階段一<strong>完全零重複</strong>。</li>
+                            <li>• 支援鍵盤（1/Q、2/P、3/M）或螢幕點擊搶答，可切換口頭/選擇題模式。</li>
+                            <li>• 計分規則：<strong class="text-emerald-400">答對 +10 分</strong>，<strong class="text-rose-400">答錯 -10 分且不設補答</strong>。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 搶答賽參數預設 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 bg-slate-950/70 border border-slate-800 rounded-2xl p-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">📺 階段二（搶答賽）題目顯示模式</label>
+                        <select id="setup-buzzer-mode" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm font-bold text-white focus:outline-none focus:border-yellow-400">
+                            <option value="oral">口頭搶答模式（投影題幹 → 揭曉標準答案）</option>
+                            <option value="choice">選擇題投影模式（同時顯示 A/B/C/D 選項）</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">⏱️ 階段二（搶答賽）作答倒數時限</label>
+                        <select id="setup-buzzer-timer" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm font-bold text-white focus:outline-none focus:border-yellow-400">
+                            <option value="15">15 秒倒數（標準賽制）</option>
+                            <option value="10">10 秒倒數（極速對決）</option>
+                            <option value="20">20 秒倒數（充裕思考）</option>
+                            <option value="0">不限時（由主持人控制）</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">🗣️ 階段一＆二 廣東話自動讀題</label>
+                        <select id="setup-buzzer-tts" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm font-bold text-white focus:outline-none focus:border-yellow-400">
+                            <option value="on">開啟（廣東話自動讀題及4個選項，作答/搶答即停）</option>
+                            <option value="off">關閉自動讀題</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">🎙️ 鎖定廣東話語音角色（避免變聲）</label>
+                        <div class="flex items-center gap-2">
+                            <select id="setup-buzzer-voice" onchange="onSetupVoiceChange()" class="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm font-bold text-white focus:outline-none focus:border-yellow-400">
+                                <option value="">正在偵測廣東話語音...</option>
+                            </select>
+                            <button type="button" onclick="previewSelectedVoice()" title="試聽所選廣東話語音"
+                                class="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-black shrink-0 transition">
+                                🔊 試聽
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <button onclick="openRefereeModal()"
+                        class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-base transition">
+                        📖 檢視 430 題完整題庫
+                    </button>
+                    <button onclick="startFullCompetition()"
+                        class="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-black text-lg shadow-xl shadow-yellow-500/25 transition transform hover:scale-105 active:scale-95">
+                        🚀 正式啟動總決賽（進入階段一：一擲千金）
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================
+             畫面 1A：階段一「一擲千金」— 10個寶箱選箱大廳（3組輪流各2次，共6箱）
+             ======================================================================== -->
+        <section id="view-deal-lobby" class="hidden animate-fade-pop">
+            <!-- 當前輪次指揮橫幅 -->
+            <div class="max-w-5xl mx-auto mb-6 bg-slate-900/95 border-2 border-yellow-500/40 rounded-3xl p-5 shadow-2xl">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-yellow-500 text-slate-950 text-xs font-black">
+                                階段一 • 已開 <span id="deal-round-num">0</span> / 19 箱（共 380 題）
+                            </span>
+                            <span class="text-xs text-slate-400">答對 +10 分 ｜ 答錯不扣分 ｜ 每個寶箱 20 題零重複</span>
+                        </div>
+                        <h2 class="text-xl sm:text-3xl font-black text-white">
+                            請 <span id="deal-active-team-label" class="text-yellow-400 underline decoration-yellow-500/50">第一組</span> 挑選寶箱（第 <span id="deal-team-attempt">1</span> 次挑戰）
+                        </h2>
+                    </div>
+
+                    <!-- 主持人手動切換當前挑戰隊伍與進入階段二 -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
+                            <span class="text-xs text-slate-400 pl-2">指定挑戰隊伍：</span>
+                            <button onclick="setDealActiveTeam(0)" id="deal-switch-0" class="px-3 py-1.5 rounded-xl text-xs font-black transition bg-rose-600 text-white">第一組</button>
+                            <button onclick="setDealActiveTeam(1)" id="deal-switch-1" class="px-3 py-1.5 rounded-xl text-xs font-black transition bg-slate-800 text-slate-300">第二組</button>
+                            <button onclick="setDealActiveTeam(2)" id="deal-switch-2" class="px-3 py-1.5 rounded-xl text-xs font-black transition bg-slate-800 text-slate-300">第三組</button>
+                        </div>
+                        <button onclick="showStageOneCompleteSummary()"
+                            class="px-4 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-black shadow-lg transition">
+                            ⚡ 結束階段一 → 搶答賽
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 19個寶箱整體進度條與三組開箱統計 -->
+                <div id="deal-schedule-strip" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-800">
+                    <!-- JS 動態渲染三組階段一開箱進度 -->
+                </div>
+            </div>
+
+            <!-- 10個黃金寶箱網格 -->
+            <div class="max-w-5xl mx-auto">
+                <div id="deal-chests-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                    <!-- JS 動態生成 1 至 10 號寶箱 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================
+             畫面 1B：階段一「一擲千金」— 單個寶箱 20 題作答舞台
+             ======================================================================== -->
+        <section id="view-deal-quiz" class="hidden max-w-4xl mx-auto animate-fade-pop">
+            <!-- 本箱挑戰進度頂欄 -->
+            <div class="bg-slate-900/95 border border-yellow-500/35 rounded-2xl p-4 mb-5 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="dq-team-badge" class="px-3 py-1 rounded-lg bg-rose-600 text-white font-black text-xs sm:text-sm">第一組</span>
+                        <span id="dq-chest-badge" class="px-3 py-1 rounded-lg bg-yellow-500 text-slate-950 font-black text-xs sm:text-sm">第 1 號寶箱（第 1/2 次）</span>
+                        <span class="text-slate-300 font-bold text-sm">題號：<strong id="dq-q-progress" class="text-yellow-400">1</strong> / 20</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div class="text-sm font-bold text-slate-300">
+                            本箱得分：<span id="dq-chest-points" class="text-lg font-black text-emerald-400">0 分</span>
+                        </div>
+                        <button id="btn-dq-tts-toggle" onclick="toggleBuzzerTTS()" title="開關廣東話自動讀題"
+                            class="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 text-xs font-bold transition">
+                            🗣️ 廣東話讀題：開
+                        </button>
+                        <button onclick="speakCurrentDealQuestion()" title="重新朗讀本題與選項"
+                            class="px-3 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 text-xs font-bold transition">
+                            🔊 重讀題目
+                        </button>
+                        <button onclick="openEndChestEarlyModal()" title="提前結束本寶箱"
+                            class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/80 border border-slate-700 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 text-xs font-bold transition">
+                            ⏹ 結束本箱
+                        </button>
+                    </div>
+                </div>
+                <!-- 20題進度條 -->
+                <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="dq-progress-bar" class="h-full bg-gradient-to-r from-yellow-400 to-emerald-400 transition-all duration-300" style="width: 5%"></div>
+                </div>
+            </div>
+
+            <!-- 選擇題主卡片 -->
+            <div class="gold-panel-border rounded-3xl p-6 sm:p-8 shadow-2xl">
+                <div class="flex items-center justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span id="dq-orig-id" class="px-2.5 py-0.5 rounded bg-slate-800 text-slate-400 text-xs font-mono">原題庫 #1</span>
+                        <span id="dq-category" class="px-3 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold">控煙法規</span>
+                    </div>
+                    <span class="text-xs font-bold text-emerald-400">答對 +10 分 ｜ 答錯不扣分</span>
+                </div>
+
+                <h3 id="dq-question-text" class="text-xl sm:text-2xl md:text-3xl font-black text-white leading-snug mb-6">
+                    題目載入中...
+                </h3>
+
+                <!-- ABCD 四個選項 -->
+                <div id="dq-options-list" class="space-y-3">
+                    <!-- JS 動態產生 -->
+                </div>
+
+                <!-- 作答結果回饋區 -->
+                <div id="dq-feedback-panel" class="hidden mt-6 p-4 rounded-2xl border transition-all">
+                    <div class="flex items-start gap-3">
+                        <span id="dq-fb-icon" class="text-2xl mt-0.5">✅</span>
+                        <div class="flex-1">
+                            <h4 id="dq-fb-title" class="font-black text-base sm:text-lg mb-1">回答正確！+10 分</h4>
+                            <p id="dq-fb-desc" class="text-sm text-slate-200"></p>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button id="btn-dq-next" onclick="nextDealQuestion()"
+                            class="px-7 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-black text-sm sm:text-base shadow-lg transition transform active:scale-95">
+                            下一題 ➔
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================
+             畫面 1C：單個寶箱完成小結彈窗 / 階段一總結算過渡畫面
+             ======================================================================== -->
+        <section id="view-deal-summary" class="hidden max-w-3xl mx-auto animate-fade-pop">
+            <div class="gold-panel-border rounded-3xl p-6 sm:p-9 text-center shadow-2xl">
+                <div id="ds-icon" class="text-6xl mb-3 animate-bounce">📦</div>
+                <h2 id="ds-title" class="text-2xl sm:text-4xl font-black gold-gradient-text mb-2">寶箱開啟完成！</h2>
+                <p id="ds-subtitle" class="text-slate-300 text-sm sm:text-base mb-6">本箱得分已即時累計至總分榜</p>
+
+                <!-- 單箱戰績卡片（僅在單箱完成時顯示） -->
+                <div id="ds-single-box-stats" class="grid grid-cols-2 gap-4 max-w-md mx-auto mb-6">
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
+                        <div class="text-xs text-slate-400 mb-1">本箱答對題數</div>
+                        <div class="text-2xl font-black text-emerald-400"><span id="ds-box-correct">0</span> / <span id="ds-box-answered">20</span> 題</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
+                        <div class="text-xs text-slate-400 mb-1">本箱獲得積分</div>
+                        <div class="text-2xl font-black text-yellow-400">+<span id="ds-box-score">0</span> 分</div>
+                    </div>
+                </div>
+
+                <!-- 階段一 3組累計總分排名對照 -->
+                <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 mb-7">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">當前三組總積分排行榜</h3>
+                    <div id="ds-standings-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <!-- JS 動態填入三組當前積分 -->
+                    </div>
+                </div>
+
+                <button id="btn-ds-continue" onclick="proceedAfterDealSummary()"
+                    class="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-black text-lg shadow-xl transition transform hover:scale-105 active:scale-95">
+                    繼續下一回合選箱 ➔
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================================================
+             畫面 2：階段二「3組極速搶答賽」（50題零重複，答對+10 / 答錯-10 不設補答）
+             ======================================================================== -->
+        <section id="view-buzzer-arena" class="hidden animate-fade-pop">
+            <!-- 50題進度條 -->
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden mb-5 border border-slate-700/70">
+                <div id="bz-progress-bar" class="h-full bg-gradient-to-r from-sky-400 via-indigo-500 to-pink-500 transition-all duration-300" style="width: 2%"></div>
+            </div>
+
+            <!-- 3組巨型搶答控制台 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <!-- 第1組搶答區 -->
+                <div id="bz-team-card-0" class="rounded-2xl p-4 bg-gradient-to-b from-rose-950/65 to-slate-900/95 border-2 border-rose-500/50 transition-all">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-rose-500"></span>
+                            <span id="bz-team-name-0" class="font-black text-lg sm:text-xl text-white">第一組</span>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">按 [1] 或 [Q]</span>
+                    </div>
+                    <div class="flex items-baseline justify-between my-1.5">
+                        <div id="bz-team-score-0" class="text-3xl sm:text-4xl font-black text-rose-400 tabular-nums">0 分</div>
+                        <div class="text-xs text-slate-400">
+                            搶答對 <strong id="bz-right-0" class="text-emerald-400">0</strong> / 錯 <strong id="bz-wrong-0" class="text-rose-400">0</strong>
+                        </div>
+                    </div>
+                    <button id="bz-btn-0" onclick="triggerTeamBuzz(0)"
+                        class="buzzer-pad w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 disabled:opacity-35 disabled:cursor-not-allowed text-white font-black text-base sm:text-lg shadow-lg shadow-rose-600/30">
+                        🔔 第一組搶答！
+                    </button>
+                </div>
+
+                <!-- 第2組搶答區 -->
+                <div id="bz-team-card-1" class="rounded-2xl p-4 bg-gradient-to-b from-amber-950/65 to-slate-900/95 border-2 border-amber-500/50 transition-all">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-amber-400"></span>
+                            <span id="bz-team-name-1" class="font-black text-lg sm:text-xl text-white">第二組</span>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">按 [2] 或 [P]</span>
+                    </div>
+                    <div class="flex items-baseline justify-between my-1.5">
+                        <div id="bz-team-score-1" class="text-3xl sm:text-4xl font-black text-amber-400 tabular-nums">0 分</div>
+                        <div class="text-xs text-slate-400">
+                            搶答對 <strong id="bz-right-1" class="text-emerald-400">0</strong> / 錯 <strong id="bz-wrong-1" class="text-rose-400">0</strong>
+                        </div>
+                    </div>
+                    <button id="bz-btn-1" onclick="triggerTeamBuzz(1)"
+                        class="buzzer-pad w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 disabled:opacity-35 disabled:cursor-not-allowed text-slate-950 font-black text-base sm:text-lg shadow-lg shadow-amber-500/30">
+                        🔔 第二組搶答！
+                    </button>
+                </div>
+
+                <!-- 第3組搶答區 -->
+                <div id="bz-team-card-2" class="rounded-2xl p-4 bg-gradient-to-b from-emerald-950/65 to-slate-900/95 border-2 border-emerald-500/50 transition-all">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-emerald-400"></span>
+                            <span id="bz-team-name-2" class="font-black text-lg sm:text-xl text-white">第三組</span>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">按 [3] 或 [M]</span>
+                    </div>
+                    <div class="flex items-baseline justify-between my-1.5">
+                        <div id="bz-team-score-2" class="text-3xl sm:text-4xl font-black text-emerald-400 tabular-nums">0 分</div>
+                        <div class="text-xs text-slate-400">
+                            搶答對 <strong id="bz-right-2" class="text-emerald-400">0</strong> / 錯 <strong id="bz-wrong-2" class="text-rose-400">0</strong>
+                        </div>
+                    </div>
+                    <button id="bz-btn-2" onclick="triggerTeamBuzz(2)"
+                        class="buzzer-pad w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-35 disabled:cursor-not-allowed text-white font-black text-base sm:text-lg shadow-lg shadow-emerald-600/30">
+                        🔔 第三組搶答！
+                    </button>
+                </div>
+            </div>
+
+            <!-- 中央搶答題目大屏幕 -->
+            <div class="bg-slate-900/95 border-2 border-indigo-500/45 rounded-3xl p-6 sm:p-9 shadow-2xl">
+                <!-- 題號、倒數計時器與狀態指示燈 -->
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-800">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="bz-q-badge" class="px-3.5 py-1 rounded-xl bg-indigo-600 text-white font-black text-sm sm:text-base">
+                            搶答題 1 / 50
+                        </span>
+                        <span id="bz-orig-badge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs font-mono">
+                            原題庫 #10
+                        </span>
+                        <span id="bz-cat-badge" class="px-3 py-1 rounded-lg bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-bold">
+                            分類
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <!-- 倒數計時器顯示 -->
+                        <div id="bz-timer-pill" class="px-3.5 py-1 rounded-xl bg-slate-950 border border-slate-700 text-amber-400 font-black text-sm sm:text-base">
+                            ⏱️ <span id="bz-timer-text">15s</span>
+                        </div>
+
+                        <!-- 搶答狀態橫幅 -->
+                        <div id="bz-status-pill" class="px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-black flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span>開放搶答中！</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 超大投影字體題目區 -->
+                <div class="min-h-[120px] flex flex-col justify-center mb-6">
+                    <h2 id="bz-question-text" class="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-snug tracking-wide">
+                        題目載入中...
+                    </h2>
+                </div>
+
+                <!-- 選擇題 ABCD 選項投影區（可切換顯示/隱藏） -->
+                <div id="bz-choices-box" class="hidden mb-6">
+                    <div id="bz-choices-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- JS 動態插入 -->
+                    </div>
+                </div>
+
+                <!-- 標準答案揭曉面板 -->
+                <div id="bz-answer-box" class="hidden mb-6 p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-500/20 border-2 border-yellow-400/60 animate-fade-pop">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="text-yellow-300 text-xs sm:text-sm font-black uppercase tracking-wider">💡 標準答案</span>
+                        <span id="bz-no-rebound-badge" class="hidden px-2.5 py-0.5 rounded bg-rose-600 text-white text-xs font-black">
+                            ⛔ 答錯扣 10 分 • 不設補答（本題作廢）
+                        </span>
+                    </div>
+                    <div id="bz-answer-text" class="text-xl sm:text-2xl font-black text-yellow-200 leading-relaxed">
+                        標準答案
+                    </div>
+                </div>
+
+                <!-- 主持人裁判操作欄 -->
+                <div class="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="toggleBuzzerChoices()"
+                            class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs sm:text-sm font-bold transition">
+                            👁️ 顯示/隱藏 ABCD 選項
+                        </button>
+                        <button onclick="revealBuzzerAnswerOnly()"
+                            class="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs sm:text-sm font-bold transition">
+                            💡 揭曉答案
+                        </button>
+                        <button id="btn-bz-tts-toggle" onclick="toggleBuzzerTTS()"
+                            class="px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 text-xs sm:text-sm font-bold transition">
+                            🗣️ 廣東話讀題：開
+                        </button>
+                        <button onclick="speakCurrentBuzzerQuestion()"
+                            class="px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 text-xs sm:text-sm font-bold transition">
+                            🔊 重讀題目
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+                        <!-- 狀態 A：開放搶答中 -> 無人搶答 -->
+                        <button id="btn-bz-nobuzz" onclick="handleBuzzerNoBuzz(false)"
+                            class="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-sm transition">
+                            ⏭️ 無人搶答（揭曉答案）
+                        </button>
+
+                        <!-- 狀態 B：某組已搶答鎖定 -> 判定對 (+10) 或 錯 (-10且不設補答) -->
+                        <div id="bz-judge-group" class="hidden flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                            <button onclick="judgeBuzzerAnswer(true)"
+                                class="flex-1 sm:flex-initial px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-base shadow-lg shadow-emerald-600/30 transition transform active:scale-95">
+                                ✅ 答對（+10 分）
+                            </button>
+                            <button onclick="judgeBuzzerAnswer(false)"
+                                class="flex-1 sm:flex-initial px-6 py-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white font-black text-base shadow-lg shadow-rose-600/30 transition transform active:scale-95">
+                                ❌ 答錯（-10 分 • 不設補答）
+                            </button>
+                        </div>
+
+                        <!-- 狀態 C：本題已結束 -> 下一題 -->
+                        <button id="btn-bz-next" onclick="nextBuzzerQuestion()"
+                            class="hidden w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-base shadow-lg shadow-indigo-500/30 transition transform active:scale-95">
+                            下一題 ➔
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================
+             畫面 3：最終總決賽豪華頒獎台結算
+             ======================================================================== -->
+        <section id="view-podium" class="hidden max-w-5xl mx-auto animate-fade-pop">
+            <div class="gold-panel-border rounded-3xl p-6 sm:p-10 text-center shadow-2xl">
+                <span class="inline-block px-4 py-1.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-xs font-black tracking-widest uppercase mb-3">
+                    🎉 第14屆 控煙與健康校際問答比賽 • 終極榮譽榜 🎉
+                </span>
+                <h2 class="text-3xl sm:text-5xl font-black gold-gradient-text mb-2">總決賽最終成績公佈</h2>
+                <p class="text-slate-400 text-sm sm:text-base mb-8">結合「階段一：一擲千金」與「階段二：3組極速搶答賽」累計總積分排名</p>
+
+                <!-- 冠亞季軍頒獎卡片 -->
+                <div id="final-podium-grid" class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                    <!-- JS 動態按總分高低排序生成 -->
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <button onclick="resetEntireTournament()"
+                        class="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-black text-lg shadow-xl shadow-yellow-500/30 transition transform hover:scale-105 active:scale-95">
+                        🔄 重新舉辦新一場總決賽（重新洗牌題庫）
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================================================
+         裁判後台與 250 題完整題庫檢視彈窗
+         ============================================================================ -->
+    <div id="referee-modal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl max-w-4xl w-full max-h-[88vh] flex flex-col p-6 shadow-2xl animate-fade-pop">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div>
+                    <h3 class="text-xl font-black text-white">⚙️ 裁判後台控制與題庫查閱中心</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">支援手動微調分數、直接切換比賽階段，以及查閱全套 430 題無重複題庫</p>
+                </div>
+                <button onclick="closeRefereeModal()" class="text-slate-400 hover:text-white text-2xl font-bold px-2">✕</button>
+            </div>
+
+            <div class="overflow-y-auto py-4 space-y-6 pr-1">
+                <!-- 1. 手動微調三組分數 -->
+                <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4">
+                    <h4 class="text-sm font-black text-yellow-400 mb-3">🎛️ 裁判手動調整分數（即時同步總分榜）</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="ref-score-adjusters">
+                        <!-- JS 動態渲染 -->
+                    </div>
+                </div>
+
+                <!-- 2. 賽段快速跳轉控制 -->
+                <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4">
+                    <h4 class="text-sm font-black text-sky-400 mb-3">🧭 賽段流程快速控制</h4>
+                    <div class="flex flex-wrap gap-2.5">
+                        <button onclick="jumpToStage('DEAL_LOBBY')" class="px-4 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-300 text-xs font-bold transition">
+                            跳至階段一：一擲千金選箱大廳
+                        </button>
+                        <button onclick="jumpToStage('BUZZER')" class="px-4 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-300 text-xs font-bold transition">
+                            直接進入階段二：3組極速搶答賽（50題）
+                        </button>
+                        <button onclick="jumpToStage('PODIUM')" class="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition">
+                            結束比賽並顯示最終頒獎台
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. 題庫一覽（篩選：全部 / 階段一已抽120題 / 階段二專屬50題） -->
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h4 class="text-sm font-black text-white">📖 題庫抽題狀態檢視（確保階段一與階段二 100% 零重複）</h4>
+                        <div class="flex gap-1.5">
+                            <button onclick="renderRefQuestionList('ALL')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">全部 (430題)</button>
+                            <button onclick="renderRefQuestionList('DEAL')" class="px-3 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-xs font-bold text-yellow-300">階段一池 (380題 / 19箱)</button>
+                            <button onclick="renderRefQuestionList('BUZZER')" class="px-3 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-xs font-bold text-sky-300">階段二池 (50題)</button>
+                        </div>
+                    </div>
+                    <div id="ref-question-list" class="space-y-2 max-h-72 overflow-y-auto pr-1 text-xs">
+                        <!-- JS 動態生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 text-right">
+                <button onclick="closeRefereeModal()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition">
+                    關閉後台
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定義確認提前結束本寶箱彈窗（不使用 confirm()） -->
+    <div id="early-chest-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl animate-fade-pop">
+            <div class="text-4xl mb-2">⏹️</div>
+            <h3 class="text-lg font-black text-white mb-2">確定要提前結束本寶箱嗎？</h3>
+            <p class="text-sm text-slate-400 mb-6">目前已答對獲得的分數將會保留並計入總分，本寶箱將標記為已完成。</p>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('early-chest-modal').classList.add('hidden')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">繼續答題</button>
+                <button onclick="confirmEndChestEarly()" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold">確定結束</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 完整 250 題原題庫（嚴格取材自《第14屆 控煙與健康校際問答比賽問題集》）
+         * 結構：{ id: 原題集編號, cat: 類別, q: 題目, ans: 正確答案, distractors: [3個干擾選項] }
+         * ============================================================================
+         */
+        const MASTER_QUESTION_BANK = [
+            { id: 1, cat: "控煙法規", q: "中國已禁止發佈煙草廣告，違法者將被處以罰款，最高罰金為多少元？", ans: "100萬", distractors: ["50萬", "200萬", "10萬"] },
+            { id: 2, cat: "控煙法規", q: "以下哪個城市對電子煙專賣店的違規進行處置，是內地的首例執法？", ans: "深圳", distractors: ["上海", "北京", "廣州"] },
+            { id: 3, cat: "控煙法規", q: "加強青少年控煙工作的核心內容是什麼？", ans: "強化青少年控煙宣傳引導、加大對違法煙草廣告的打擊力度、全面開展電子煙危害宣傳和規範管理", distractors: ["僅禁止未成年人進入娛樂場所", "允許向16歲以上青少年銷售低焦油捲煙", "鼓勵青少年改吸不含尼古丁的草本煙"] },
+            { id: 4, cat: "控煙法規", q: "根據中國《電子煙管理辦法》的規定，以下哪項敘述是正確的？", ans: "禁止銷售可自行添加霧化物的電子煙；禁止向未成年人銷售電子煙；禁止自動售貨機銷售電子煙", distractors: ["允許在自動售貨機銷售煙草口味電子煙", "允許舉辦電子煙展會以推廣減害理念", "無需煙草專賣許可證即可在便利店銷售電子煙"] },
+            { id: 5, cat: "控煙法規", q: "根據中國境內銷售捲煙的包裝標識規定，包裝上標註的焦油量不得超過多少毫克？", ans: "15毫克", distractors: ["10毫克", "20毫克", "8毫克"] },
+            { id: 6, cat: "控煙法規", q: "2024年中國內地首個室外吸煙點標準規範在哪個城市實施？", ans: "上海", distractors: ["北京", "深圳", "杭州"] },
+            { id: 7, cat: "控煙法規", q: "中國內地《公共場所衛生管理條例實施細則》規定室外公共場所設置的吸煙區不得位於以下哪個位置？", ans: "行人必經的通道上", distractors: ["距離建築物出口10米以外的空曠處", "設有明顯引導標識的通風區域", "遠離人群聚集的指定吸煙亭"] },
+            { id: 8, cat: "控煙法規", q: "以下哪個省份明確城市公共場所、室內工作場所和公共交通工具內禁止吸電子煙？", ans: "河南省", distractors: ["四川省", "湖南省", "山東省"] },
+            { id: 9, cat: "健康政策", q: "「健康中國行動（2019-2030年）」的行動計畫包括以下哪項？", ans: "健康環境促進行動、合理膳食行動、心腦血管疾病防治行動、中小學生健康促進行動", distractors: ["煙草產業擴張與稅收倍增行動", "室內吸煙區普及建設行動", "青少年電子煙減害替代行動"] },
+            { id: 10, cat: "控煙法規", q: "《中華人民共和國廣告法》規定禁止發布煙草廣告，違規者最高可被處以廣告費多少倍的罰款？", ans: "5倍", distractors: ["2倍", "10倍", "3倍"] },
+            { id: 11, cat: "控煙公約", q: "《煙草控制框架公約》於何時在中國生效？", ans: "2006年1月9日", distractors: ["2003年5月21日", "2008年8月8日", "2012年1月1日"] },
+            { id: 12, cat: "控煙法規", q: "中國《電子煙管理辦法》中，除什麼口味以外的電子煙均禁止銷售？", ans: "煙草口味", distractors: ["薄荷口味", "水果口味", "茶香口味"] },
+            { id: 13, cat: "控煙法規", q: "中國《電子煙管理辦法》規定，禁止向多少歲以下的人出售電子煙產品？", ans: "18歲以下", distractors: ["16歲以下", "21歲以下", "14歲以下"] },
+            { id: 14, cat: "控煙知識", q: "中國控制吸煙協會設立了一個什麼獎項，警示影視製作團隊在其作品中夾雜太多吸煙鏡頭？", ans: "髒煙灰缸獎", distractors: ["黑肺警示獎", "金煙蒂獎", "無煙監督獎"] },
+            { id: 15, cat: "控煙數據", q: "內地哪個城市成人吸煙率率先降至20%以內，在全國處於領先水準？", ans: "上海", distractors: ["廣州", "成都", "武漢"] },
+            { id: 16, cat: "控煙法規", q: "北京市禁止在幼兒園、中小學校、少年宮及其周邊多少米範圍內銷售煙草製品？", ans: "100米", distractors: ["50米", "200米", "10米"] },
+            { id: 17, cat: "控煙知識", q: "很多國家或地區已禁止煙草廣告、促銷和贊助，其原因是這類煙草推廣造成了何種不良影響？", ans: "美化吸煙行為，增加煙草消費；削弱公共衛生的影響；誤導公眾，降低戒煙動力", distractors: ["導致捲煙生產成本大幅上升", "使煙草農民失去種植技術", "減少了政府的海關關稅收入"] },
+            { id: 18, cat: "控煙科技", q: "哪個城市全國首創在禁煙區域安裝環境監測器，24小時「電子眼」控煙？", ans: "深圳", distractors: ["南京", "重慶", "廈門"] },
+            { id: 19, cat: "控煙法規", q: "繼澳門後，以下哪個城市在2019年將巴士站劃出了禁煙範圍？", ans: "深圳", distractors: ["珠海", "香港", "台北"] },
+            { id: 20, cat: "健康政策", q: "《健康中國2030規劃綱要》指出，到2030年15歲以上人群吸煙率降低到多少百分比？", ans: "20%", distractors: ["15%", "25%", "10%"] },
+            { id: 21, cat: "控煙科技", q: "中國哪個城市推出了全國首個違禁吸煙抓拍系統？", ans: "舟山", distractors: ["寧波", "蘇州", "青島"] },
+            { id: 22, cat: "控煙法規", q: "在國內，以下哪個交通工具內尚未全面禁煙？", ans: "綠皮火車", distractors: ["高鐵動車組", "民航客機", "城市地鐵"] },
+            { id: 23, cat: "煙害數據", q: "據統計，全世界每年發生的火災有百分之多少是由吸煙引起的？", ans: "20%", distractors: ["5%", "45%", "10%"] },
+            { id: 24, cat: "煙害數據", q: "全球女性吸煙者數量最多的國家是？", ans: "美國", distractors: ["法國", "日本", "俄羅斯"] },
+            { id: 25, cat: "煙害數據", q: "根據WHO數據顯示，全球範圍內，人們開始經常吸煙的平均年齡是多少歲？", ans: "19歲", distractors: ["25歲", "15歲", "22歲"] },
+            { id: 26, cat: "澳門控煙", q: "本澳以下哪一個年齡段組別煙草使用率最高？", ans: "35-44歲", distractors: ["15-24歲", "55-64歲", "65歲以上"] },
+            { id: 27, cat: "控煙經濟", q: "全球煙草使用趨勢顯示，以下哪個因素最有效地降低了吸煙率？", ans: "煙草稅的增加", distractors: ["推出低焦油捲煙", "在煙盒印製精美圖案", "設立更多室內吸煙室"] },
+            { id: 28, cat: "控煙成效", q: "據研究，英國在無煙害法案立法後，醫院哪類型的病人數量急遽下降？", ans: "氣喘的兒童", distractors: ["骨折的長者", "近視的青少年", "腸胃炎患者"] },
+            { id: 29, cat: "煙害數據", q: "中國每年因吸煙相關疾病死亡的人數大約是多少？", ans: "100萬以上", distractors: ["20萬左右", "50萬左右", "5萬以下"] },
+            { id: 30, cat: "煙害數據", q: "以下哪個國家成年男性的吸煙率最高？", ans: "印尼", distractors: ["新加坡", "澳洲", "加拿大"] },
+            { id: 31, cat: "澳門控煙", q: "在澳門，因違反《控煙法》規定而實施制裁的罰款所得，全數歸哪個政府部門所有？", ans: "衛生局", distractors: ["財政局", "治安警察局", "市政署"] },
+            { id: 32, cat: "澳門控煙", q: "在澳門，距離標示集體客運車輛停車處（巴士站）的信號少於多少米範圍內禁止吸煙？", ans: "10米", distractors: ["5米", "15米", "20米"] },
+            { id: 33, cat: "澳門控煙", q: "根據澳門《控煙法》，煙草製品的生產商或進口商須將煙草製品生產配料及其份量清單提交給哪個部門？", ans: "衛生局", distractors: ["經濟及科技發展局", "海關", "消費者委員會"] },
+            { id: 34, cat: "澳門控煙", q: "澳門現時違法吸煙者除可前往各衛生局中心及控煙辦公室繳付罰款外，還可到哪些地方繳交罰款？", ans: "澳門中國銀行及各支行", distractors: ["全澳所有便利店", "各大娛樂場禮賓部", "任意自動櫃員機"] },
+            { id: 35, cat: "澳門控煙", q: "澳門《控煙法》規定每人每日可從境外攜帶捲煙多少支入境？", ans: "19支", distractors: ["20支", "100支", "200支"] },
+            { id: 36, cat: "澳門控煙", q: "本澳禁止出售含有多少毫克以上尼古丁的煙草？", ans: "1.5毫克", distractors: ["0.5毫克", "2.5毫克", "3.0毫克"] },
+            { id: 37, cat: "澳門控煙", q: "澳門禁止向未滿18歲人士銷售煙草製品，如違反將被科以罰款澳門幣多少元？", ans: "20000元", distractors: ["1500元", "5000元", "10000元"] },
+            { id: 38, cat: "澳門修法", q: "澳門《控煙法》修法內容包括以下哪項重要措施？", ans: "禁止在供集體使用的地方消費或管有電子煙；擴大室外禁煙範圍；實施標準化包裝制度", distractors: ["允許在娛樂場全面恢復吸煙", "降低煙草稅以打擊私煙", "取消捲煙包裝上的健康警語"] },
+            { id: 39, cat: "澳門修法", q: "澳門有關標準化包裝制度及擴大警示標籤的規定，將於何時實施？", ans: "2028年7月1日", distractors: ["2025年1月1日", "2026年12月31日", "2030年5月31日"] },
+            { id: 40, cat: "澳門控煙", q: "澳門政府推行控煙工作秉持的原則是什麼？", ans: "健康促進、先易後難、循序漸進", distractors: ["全面禁止、一步到位、嚴刑峻法", "市場主導、行業自律、自由選擇", "先罰後教、經濟優先、適度放寬"] },
+            { id: 41, cat: "澳門控煙", q: "根據澳門《控煙法》，捲煙包裝標籤的規定包括以下哪項？", ans: "以不褪色方式印刷，含圖案、健康警語、戒煙專科門診電話，並分別印中葡文", distractors: ["以水溶性油墨印刷，僅需標示品牌名稱、焦油含量及生產日期，並印英文", "由煙草商自行設計警示圖案，只需於包裝底部以小字體標示健康警語及熱線", "僅於外盒側面印上中文健康提示，無需附設圖片警示或戒煙專科門診電話"] },
+            { id: 42, cat: "澳門修法", q: "澳門《控煙法》修法內容中，針對禁止消費與管有電子煙的規定，將於何時實施？", ans: "2027年7月1日", distractors: ["2028年7月1日", "2026年1月1日", "2025年5月31日"] },
+            { id: 43, cat: "澳門修法", q: "澳門《控煙法》修法內容加強對電子煙管制的原因是什麼？", ans: "電子煙易於隱藏；鄰近地區有被用於吸食毒品的情況；防止其被用於吸食毒品", distractors: ["電子煙電池容易過熱耗電", "電子煙外型不夠美觀", "傳統煙草商要求限制電子煙競爭"] },
+            { id: 44, cat: "澳門修法", q: "澳門《控煙法》修法內容將攜帶新興吸煙產品出入境的罰款提高的主要目的是什麼？", ans: "加強阻嚇力", distractors: ["增加海關行政收入", "鼓勵旅客改買傳統捲煙", "減少旅客攜帶行李重量"] },
+            { id: 45, cat: "澳門修法", q: "澳門《控煙法》修法內容規定，距離小學及中學教育場所出入口少於多少米的範圍內禁止吸煙？", ans: "10米", distractors: ["3米", "50米", "25米"] },
+            { id: 46, cat: "澳門修法", q: "澳門《控煙法》修法內容規定，距離醫院出入口少於多少米的範圍內禁止吸煙？", ans: "10米", distractors: ["5米", "30米", "15米"] },
+            { id: 47, cat: "澳門修法", q: "澳門《控煙法》修法內容規定，監察人員使用隨身攝錄機攝錄前應如何操作？", ans: "應清楚告知對方開始錄影", distractors: ["必須秘密偷拍以防對方逃跑", "無需通知直接進行全程錄音錄影", "需先取得被攝錄者的書面簽名同意"] },
+            { id: 48, cat: "澳門修法", q: "澳門《控煙法》修法內容規定的室外禁煙範圍，具體參照目前何種設施的模式執行？", ans: "巴士站", distractors: ["室內娛樂場吸煙室", "公共停車場收費處", "自動售賣機周邊"] },
+            { id: 49, cat: "澳門修法", q: "澳門《控煙法》修法內容規定雪茄及小雪茄的標籤式樣應至少占兩個最大表面各多少面積？", ans: "70%", distractors: ["30%", "50%", "90%"] },
+            { id: 50, cat: "澳門修法", q: "澳門《控煙法》修法內容規定對煙草製品實施何種包裝制度？", ans: "標準化包裝制度", distractors: ["限量版紀念包裝制度", "透明塑膠袋包裝制度", "品牌自定義豪華包裝制度"] },
+            { id: 51, cat: "澳門修法", q: "澳門《控煙法》修法內容規定監察人員在何種情況下可以使用隨身攝錄機？", ans: "處於危險、緊急或擾亂公共秩序等類似情況下", distractors: ["在任何時候無需理由均可秘密偷拍", "僅在室內辦公室開會時", "當違法者主動要求拍照留念時"] },
+            { id: 52, cat: "澳門修法", q: "澳門《控煙法》修法內容規定隨身攝錄機取得的攝錄資料最長保存多久？", ans: "7日", distractors: ["30日", "1年", "24小時"] },
+            { id: 53, cat: "澳門修法", q: "澳門《控煙法》修法內容禁止尼古丁袋等產品的主要考慮是什麼？", ans: "避免青少年誤以為無害或不易上癮，從而養成吸煙習慣（「入門效應」）", distractors: ["因為尼古丁袋生產成本過高", "因為尼古丁袋不含任何尼古丁成份", "為了保護傳統捲煙的市場份額"] },
+            { id: 54, cat: "澳門修法", q: "澳門《控煙法》修法內容禁止尼古丁袋等新興吸煙產品製造及流通的主要目的是什麼？", ans: "防止該類產品在澳門市場擴大及形成消費規模", distractors: ["因為尼古丁袋的生產技術尚未成熟", "為了將尼古丁袋留作出口用途", "因為尼古丁袋不含任何有效成分"] },
+            { id: 55, cat: "澳門修法", q: "澳門《控煙法》修法內容禁止的尼古丁製品中，俗稱「口含煙」的是哪種？", ans: "尼古丁袋", distractors: ["尼古丁戒煙貼", "尼古丁咀嚼膠", "水煙壺"] },
+            { id: 56, cat: "澳門修法", q: "澳門《控煙法》修法內容禁止製造及流通的新興吸煙產品包括哪些？", ans: "尼古丁袋（俗稱「口含煙」）、草本煙、水煙", distractors: ["尼古丁戒煙貼片與戒煙香口膠", "醫用霧化吸入器", "無糖薄荷潤喉糖"] },
+            { id: 57, cat: "澳門修法", q: "澳門《控煙法》修法內容實施標準化包裝制度及擴大警示標籤的主要目的是什麼？", ans: "削弱煙草包裝對公眾的吸引力，降低煙草對年輕人的吸引力", distractors: ["方便煙草商節省印刷油墨成本", "統一全球所有商品的包裝規格", "幫助消費者更容易辨認不同煙草品牌"] },
+            { id: 58, cat: "澳門修法", q: "澳門《控煙法》修法內容對捲煙包裝的要求應以何種方式訂定？", ans: "公佈於《澳門特別行政區公報》的行政長官批示", distractors: ["煙草生產商內部的行業公約", "零售商戶自行張貼的告示", "衛生中心醫生的口頭建議"] },
+            { id: 59, cat: "澳門修法", q: "澳門《控煙法》修法內容對電子煙的定義包括哪些內容？", ans: "指得以煙嘴方式吸入含有或不含尼古丁氣霧的模仿吸煙產品，及其任何組成部分和配件", distractors: ["僅指內含高濃度尼古丁煙油的充電式霧化器，不包含無尼古丁產品及相關配件", "僅指需要點燃煙草並產生明火煙霧的傳統捲煙替代裝置，不含一次性霧化器", "指專供醫療用途且須經衛生局批准方可使用之吸入式霧化治療儀器及其配件"] },
+            { id: 60, cat: "澳門修法", q: "澳門《控煙法》修法內容對電子煙的管制有何新規定？", ans: "禁止在所有供集體使用的地方使用或管有電子煙", distractors: ["允許在室外公園自由吸食電子煙", "僅禁止未成年人管有電子煙，成年人不受限", "允許在私人汽車內接載兒童時使用電子煙"] },
+            { id: 61, cat: "澳門修法", q: "澳門《控煙法》修法內容增加煙草製品警示標籤比例是應哪個國際組織的建議？", ans: "世界衛生組織", distractors: ["世界貿易組織", "國際奧林匹克委員會", "聯合國教科文組織"] },
+            { id: 62, cat: "澳門修法", q: "澳門《控煙法》修法內容規定，可通過何種方式在供集體使用的室外地方設立禁煙範圍？", ans: "行政長官批示", distractors: ["衛生局內部通告", "立法會口頭決議", "市政署公開指引"] },
+            { id: 63, cat: "澳門修法", q: "澳門《控煙法》中，禁煙區域的劃定由哪個主體負責？", ans: "主管實體", distractors: ["零售商戶", "煙草進口商", "物業管理員"] },
+            { id: 64, cat: "澳門修法", q: "監察人員使用隨身攝錄機收集資料的傳送、儲存、取得、保存及刪除程式受誰的指引規範？", ans: "衛生局局長經聽取個人資料保護局的意見後", distractors: ["治安警察局局長單獨決定", "煙草進口商協會代表", "市政署清潔專營公司"] },
+            { id: 65, cat: "澳門修法", q: "監察人員使用隨身攝錄機的主要目的是什麼？", ans: "保障監察人員的安全", distractors: ["拍攝宣傳紀錄片", "統計每日街頭行人流量", "替代書面罰款通知書"] },
+            { id: 66, cat: "澳門控煙", q: "澳門《預防及控制吸煙制度》（《控煙法》）自何年起生效？", ans: "2012年", distractors: ["2008年", "2015年", "2018年"] },
+            { id: 67, cat: "澳門修法", q: "澳門特區立法會於何時細則性討論並表決通過《修改第5/2011號法律〈預防及控制吸煙制度〉》法案？", ans: "2026年7月", distractors: ["2012年1月", "2018年1月", "2020年12月"] },
+            { id: 68, cat: "澳門控煙", q: "澳門現時對電子煙的製造和流通採取何種態度？", ans: "已禁止", distractors: ["完全開放", "僅限制網上銷售", "鼓勵本地生產"] },
+            { id: 69, cat: "澳門修法", q: "隨身攝錄機取得的攝錄資料須以何種形式保存於紀錄內？", ans: "編碼形式", distractors: ["公開上傳至社交媒體", "無密碼保護的普通光碟", "打印成紙本照片存檔"] },
+            { id: 70, cat: "健康醫學", q: "以下哪一類人士屬於易患上禽流感的高危人士？", ans: "兒童、長者、長期病患者、與活家禽有近距離接觸的人士", distractors: ["經常進行戶外慢跑、飲食清淡及定期體檢的成年運動員", "長期於無塵辦公室工作、極少接觸動物的年輕上班族", "已完成季節性疫苗接種且日常注重個人衛生的在校學生"] },
+            { id: 71, cat: "健康醫學", q: "呼吸道疾病流行於哪個時段？", ans: "冬季及初春", distractors: ["盛夏及初秋", "梅雨季節", "全年均勻分佈"] },
+            { id: 72, cat: "健康醫學", q: "以下哪種病毒會由母嬰垂直感染？", ans: "艾滋病、B型肝炎、德國麻疹病毒", distractors: ["登革熱病毒", "流行性感冒病毒", "甲型肝炎病毒"] },
+            { id: 73, cat: "健康醫學", q: "營養不良的最初症狀是什麼？", ans: "體重不增或減輕", distractors: ["視力急劇下降", "皮膚出現大量紅斑", "關節嚴重變形"] },
+            { id: 74, cat: "健康醫學", q: "下列哪項是登革熱的傳播媒介？", ans: "病媒蚊", distractors: ["蒼蠅", "老鼠", "受污染的食水"] },
+            { id: 75, cat: "健康醫學", q: "以下哪一組傳染病全部經由蚊蟲傳播？", ans: "寨卡病毒感染、登革熱、瘧疾", distractors: ["甲型肝炎、肺結核、百日咳", "手足口病、水痘、流行性感冒", "乙型肝炎、破傷風、霍亂"] },
+            { id: 76, cat: "健康醫學", q: "以下是關於皮膚癌的敘述，哪項正確？", ans: "超過九成的皮膚癌案例是由於暴露在太陽光紫外線而造成；膚色較淺的人有較高罹病風險", distractors: ["皮膚癌極為罕見，僅佔全球癌症不到1%", "膚色較深的人絕對不會患上皮膚癌", "塗抹防曬霜會直接誘發皮膚癌"] },
+            { id: 77, cat: "健康醫學", q: "適當日曬可增加體內哪種維生素的轉化，從而促進鈣質吸收並預防骨質疏鬆症？", ans: "維生素D", distractors: ["維生素C", "維生素A", "維生素B1"] },
+            { id: 78, cat: "健康醫學", q: "兒童一發燒就吃退燒藥是不科學的，通常腋溫達到多少度才需要服用退燒藥？", ans: "38.5°C", distractors: ["37.2°C", "39.8°C", "36.8°C"] },
+            { id: 79, cat: "健康醫學", q: "研究證實延緩或控制近視有效的方法是以下哪一項？", ans: "每日戶外活動 120分鐘", distractors: ["每日在昏暗燈光下閱讀2小時", "長時間佩戴防藍光眼鏡看手機", "每日滴用抗生素眼藥水"] },
+            { id: 80, cat: "健康醫學", q: "高強度有氧運動適合在飯後什麼時間進行？", ans: "2小時", distractors: ["立即進行", "15分鐘", "30分鐘"] },
+            { id: 81, cat: "健康醫學", q: "現時免疫疫苗接種能有效預防的疾病包括以下哪一組？", ans: "乙型肝炎、百日咳、肺炎", distractors: ["高血壓、糖尿病、痛風症", "近視眼、牙周病、骨質疏鬆", "冠心病、胃潰瘍、白內障"] },
+            { id: 82, cat: "口腔健康", q: "牙周病的症狀包括牙齦變紅腫脹、刷牙出血，以及因為牙齦萎縮而讓牙齒看起來如何？", ans: "牙齒看起來比較長", distractors: ["牙齒變得更加潔白堅固", "牙齒數量增多", "牙齒完全沒有任何感覺"] },
+            { id: 83, cat: "健康醫學", q: "肺結核的常見症狀包括以下哪項？", ans: "低燒、午後潮熱、咳痰或痰中有血、胸背痛", distractors: ["高燒不退伴隨全身皮膚脫皮", "腹痛腹瀉與關節紅腫", "視力模糊與耳鳴"] },
+            { id: 84, cat: "健康醫學", q: "急性出血性結膜炎（紅眼症）的病症包括眼睛有白色或黃色分泌物、眼皮紅腫及？", ans: "疼痛畏光", distractors: ["色盲與夜盲", "眼壓大幅下降", "視力變得更加敏銳"] },
+            { id: 85, cat: "健康醫學", q: "我國哪位科學家因對瘧疾治療上的突出貢獻而成為第一位獲諾貝爾生理醫學獎的華人科學家？", ans: "屠呦呦", distractors: ["鍾南山", "袁隆平", "陳薇"] },
+            { id: 86, cat: "健康醫學", q: "亞洲成年人體重指數（BMI）大於等於多少稱為II級肥胖？", ans: "30", distractors: ["24", "27", "35"] },
+            { id: 87, cat: "食品安全", q: "哪一類食物最易被甲型肝炎病毒所污染？", ans: "貝殼類海產", distractors: ["烘焙麵包", "高溫消毒牛奶", "真空包裝堅果"] },
+            { id: 88, cat: "健康飲食", q: "《中國居民膳食指南（2022）》建議，在溫和氣候條件下，成年男性及女性每天喝水量應各為多少毫升？", ans: "1700毫升；1500毫升", distractors: ["1000毫升；800毫升", "3000毫升；2500毫升", "500毫升；500毫升"] },
+            { id: 89, cat: "健康飲食", q: "1罐可樂含有大約多少克糖？", ans: "35g", distractors: ["5g", "12g", "70g"] },
+            { id: 90, cat: "健康醫學", q: "AGE（糖化終產物）大量產生，會導致什麼健康問題？", ans: "加速衰老、冠心病、糖尿病", distractors: ["增強免疫力與記憶力", "促進骨骼快速生長", "降低血壓與血脂"] },
+            { id: 91, cat: "健康醫學", q: "以下哪項為預防乙肝最主要的措施？", ans: "接種乙肝疫苗", distractors: ["每日服用維他命C", "避免與患者握手", "多吃高蛋白食物"] },
+            { id: 92, cat: "健康醫學", q: "關於慢性阻塞性肺病的描述，以下哪項正確？", ans: "多於中年後顯現，為全球第三大死因，主因是吸煙和空氣污染，且增肺癌與心臟病風險", distractors: ["多於幼年時期發作，屬輕微季節性過敏，主因是飲食過甜，不會影響心肺功能", "僅發生於極寒冷地區，為全球最罕見疾病之一，主因是缺乏運動，與吸煙無關", "通常於數天內自行痊癒，不會引發其他併發症，主因是飲水不足與作息不規律"] },
+            { id: 93, cat: "交通安全", q: "開車時，車廂裡的音響達到多少分貝，就能使司機視物清晰度變差，從而增加發生車禍的危險性？", ans: "95分貝", distractors: ["40分貝", "60分貝", "75分貝"] },
+            { id: 94, cat: "用藥安全", q: "退燒藥兩次用藥間隔時間應為多少小時？", ans: "4-6小時", distractors: ["1-2小時", "12-24小時", "30分鐘"] },
+            { id: 95, cat: "健康飲食", q: "以下屬於超加工食品的是？", ans: "曲奇、花生酥、辣條", distractors: ["清蒸魚、水煮西蘭花", "新鮮蘋果、原味燕麥", "糙米飯、清炒時蔬"] },
+            { id: 96, cat: "營養科學", q: "哪種元素可以通過多種途徑，有針對性地防癌抗癌，被稱為「抗癌之王」？", ans: "硒", distractors: ["鈉", "鉛", "汞"] },
+            { id: 97, cat: "健康飲食", q: "常吃哪種水果可以防治口腔疾病，因為其纖維質能除牙垢？", ans: "蘋果", distractors: ["榴槤", "西瓜", "芒果"] },
+            { id: 98, cat: "煙害與疾病", q: "中國一項調研顯示，新冠肺炎發病率男性高於女性，是與以下哪項相關？", ans: "吸煙", distractors: ["飲茶", "早睡", "跑步"] },
+            { id: 99, cat: "健康醫學", q: "接種新冠病毒疫苗的禁忌症包括以下哪項？", ans: "對疫苗或疫苗中任何成份過敏；處於慢性疾病的急性發作期；正在發熱", distractors: ["近期曾進行輕度有氧運動；日常有飲茶習慣；體重處於正常標準範圍", "曾於多年前接種過乙肝疫苗；輕微近視需佩戴眼鏡；日常作息時間規律", "偶爾出現輕微季節性皮膚乾燥；平時喜歡戶外散步；血壓維持於正常水平"] },
+            { id: 100, cat: "健康運動", q: "最大心率的計算公式是？", ans: "220-年齡", distractors: ["180-年齡", "200+年齡", "150-體重"] },
+            { id: 101, cat: "環保健康", q: "中國力爭在哪一年實現「碳中和」？", ans: "2060年", distractors: ["2030年", "2040年", "2080年"] },
+            { id: 102, cat: "健康醫學", q: "久坐不動導致下肢血液循環不暢，腎臟血流量減少，尿酸排泄效率如何？", ans: "下降", distractors: ["顯著上升", "保持不變", "先升後降"] },
+            { id: 103, cat: "健康醫學", q: "以下哪項是導致慢性阻塞性肺病的主要原因？", ans: "吸煙、空氣污染、職業性粉塵", distractors: ["飲水不足、缺乏睡眠、過度用眼", "高糖飲食、久坐不動、情緒緊張", "紫外線照射、噪音干擾、過度運動"] },
+            { id: 104, cat: "營養健康", q: "以下哪種水果或蔬菜含抗氧化劑，被研究認為可能減輕吸煙導致的DNA損傷，但不能抵消風險？", ans: "番茄、西蘭花、胡蘿蔔", distractors: ["炸薯條、洋蔥圈", "醃製酸菜、臘肉", "奶油蛋糕、甜甜圈"] },
+            { id: 105, cat: "防毒知識", q: "目前我國流行最廣、危害最嚴重、被認為是「毒品之王」的毒品是？", ans: "海洛因", distractors: ["尼古丁", "咖啡因", "阿司匹林"] },
+            { id: 106, cat: "健康飲食", q: "每天多攝入10%的超加工食品，患全因癡呆症的風險增加多少？", ans: "25%", distractors: ["2%", "5%", "60%"] },
+            { id: 107, cat: "健康醫學", q: "果糖進入人體後，會促進哪種物質合成，導致尿酸生成增多？", ans: "嘌呤", distractors: ["胰島素", "血紅蛋白", "維他命D"] },
+            { id: 108, cat: "健康飲食", q: "哪種飲品會增加痛風風險？", ans: "含糖飲料", distractors: ["白開水", "無糖淡綠茶", "純蘇打水"] },
+            { id: 109, cat: "健康醫學", q: "高尿酸血症和痛風的發生，與下列何者密切相關？", ans: "飲食結構與生活方式", distractors: ["居住樓層與天氣濕度", "身高比例與血型分類", "閱讀習慣與視力變化"] },
+            { id: 110, cat: "健康醫學", q: "痛風的發生，其主要原因是甚麼？", ans: "喜歡飲酒、長期熬夜、高嘌呤飲食", distractors: ["多吃蔬果、規律運動、多喝白開水", "早睡早起、飲食清淡、適當曬太陽", "經常步行、戒煙戒酒、補充維他命"] },
+            { id: 111, cat: "健康醫學", q: "慢性阻塞性肺病的最主要危險因素是什麼？", ans: "吸煙", distractors: ["飲茶", "日曬", "慢跑"] },
+            { id: 112, cat: "健康醫學", q: "慢性阻塞性肺病的常見症狀有哪些？", ans: "慢性咳嗽與呼吸困難", distractors: ["視力模糊與聽力下降", "關節紅腫與皮膚脫皮", "牙齦出血與口腔潰瘍"] },
+            { id: 113, cat: "健康醫學", q: "與衰老過程相關的最常見內源性生化因數是？", ans: "自由基", distractors: ["血紅蛋白", "胰島素", "膠原蛋白"] },
+            { id: 114, cat: "健康醫學", q: "繼高血壓、高血糖、高血脂「三高」之後，被稱為威脅健康「第四高」的是？", ans: "高尿酸血症", distractors: ["高體溫症", "高血鈣症", "高白細胞症"] },
+            { id: 115, cat: "控煙公約", q: "《煙草控制框架公約》的英文縮寫是什麼？", ans: "FCTC", distractors: ["WHO", "EVALI", "COPD"] },
+            { id: 116, cat: "控煙紀念日", q: "世界無煙日在1989年起定為每年的哪一天？", ans: "5月31日", distractors: ["4月7日", "6月26日", "12月1日"] },
+            { id: 117, cat: "國際控煙", q: "澳洲於何時實施「全煙害警示包裝」？", ans: "2012年12月1日", distractors: ["2005年5月31日", "2018年1月1日", "2020年6月1日"] },
+            { id: 118, cat: "煙草經濟", q: "煙草公司與煙農簽訂的合約內容通常包括以下哪項？", ans: "規定煙葉產量與時間、煙商可調整種類比例、先貸款買肥料日後還款、合約由煙商擬定", distractors: ["煙農可自由決定種植品種與交貨日期、煙商免費贈送所有肥料、合約由煙農全權擬定", "政府統一收購所有煙葉並保證免息補助、煙商不得更改種植比例、合約雙方無需書面簽署", "煙農無需承擔任何種植風險與成本、煙商按市場最高價雙倍收購、並提供終身醫療保險"] },
+            { id: 119, cat: "控煙知識", q: "現時煙草公司以什麼理據抗衡政府的煙草管制？", ans: "管制後會增加非法煙草貿易", distractors: ["承認吸煙會導致嚴重疾病", "主動要求提高煙草稅率", "呼籲青少年不要購買捲煙"] },
+            { id: 120, cat: "控煙公約", q: "世界衛生組織的煙草控制框架公約至今已實施了多久？（依題庫標準答案）", ans: "23年", distractors: ["10年", "5年", "40年"] },
+            { id: 121, cat: "控煙公約", q: "根據世界衛生組織《煙草控制框架公約》，以下哪項納入煙草製品管制？", ans: "煙草製品成分管制、煙草製品披露的規定、煙草製品的包裝及標籤管制", distractors: ["煙草商年度廣告預算分配、捲煙促銷贈品設計、品牌贊助體育賽事規範", "吸煙者每日購煙配額登記、娛樂場所吸煙區裝潢標準、煙灰缸外觀規格", "煙葉種植農藥補貼政策、捲煙零售店舖營業時間、煙草企業員工福利制度"] },
+            { id: 122, cat: "煙害與貧窮", q: "吸煙會擴大貧富差距，主要描述正確原因是？", ans: "煙民為了買煙，使食物、生活、醫療資金減少，還使人力資源減少", distractors: ["買煙可以獲得高額投資回報", "吸煙者能獲得更多醫療補貼", "煙草公司免費向低收入家庭派發捲煙"] },
+            { id: 123, cat: "二手煙知識", q: "美國哪家公司售後維修站因發現送修電腦殘有煙灰，以二手煙可能危害維修人員健康的理由拒修？", ans: "Apple蘋果", distractors: ["Microsoft微軟", "Dell戴爾", "HP惠普"] },
+            { id: 124, cat: "國際控煙", q: "2014年3月，歐盟採用了《歐盟煙草產品指引》去管制煙草的哪些項目？", ans: "煙草產品的生產、外觀和銷售", distractors: ["煙草的種植面積、灌溉水源和肥料價格", "吸煙者的年齡、職業和學歷", "煙灰缸的材質、大小和顏色"] },
+            { id: 125, cat: "煙草數據", q: "世界上煙草生產和消費量最大的國家是哪裡？", ans: "中國", distractors: ["美國", "印度", "巴西"] },
+            { id: 126, cat: "控煙經濟", q: "提高煙草稅的好處包括以下哪項？", ans: "減少各階層尤其是青少年的煙草消費；增加公共醫療資源；促使更多吸煙者戒煙", distractors: ["鼓勵青少年嘗試不同煙草品牌；減少政府公共醫療預算；提高捲煙整體銷量", "降低煙草零售價格以刺激消費；減少戒煙服務需求；擴大室內吸煙區建設規模", "促使吸煙者增加每日吸煙支數；削弱控煙宣傳成效；提高煙草企業市場份額"] },
+            { id: 127, cat: "控煙紀念日", q: "世界無煙日是每年的哪一天？", ans: "5月31日", distractors: ["4月7日", "6月26日", "10月10日"] },
+            { id: 128, cat: "控煙公約", q: "世界衛生組織《煙草控制框架公約》是哪一年生效的？", ans: "2005年", distractors: ["2000年", "2010年", "2015年"] },
+            { id: 129, cat: "控煙政策", q: "以下哪種方法對防止青少年吸煙最有效？", ans: "提高煙草價格、禁止煙草廣告和促銷、開展學校預防教育", distractors: ["推出低焦油薄荷捲煙、容許自動售貨機售煙、減少校園健康課程", "於煙盒印製潮流圖案、鼓勵青少年改吸電子煙、放寬購煙年齡限制", "在學校周邊增設吸煙區、開放煙草商贊助活動、取消健康警示標籤"] },
+            { id: 130, cat: "控煙經濟", q: "提高煙草稅對降低吸煙率的作用機制主要是什麼？", ans: "提高價格，減少購買意願，尤其是青少年和低收入人群", distractors: ["降低焦油含量，減少煙草氣味，從而讓吸煙者失去興趣", "限制捲煙包裝顏色，減少品牌辨識度，令商店停止進貨", "改變尼古丁化學結構，使其失去成癮性，從而自然戒煙"] },
+            { id: 131, cat: "控煙成效", q: "關於「無煙環境」立法，以下哪項是已被證明的效果？", ans: "降低心臟病住院率、減少兒童哮喘就診", distractors: ["增加餐飲業倒閉率、導致空氣質素惡化", "提高青少年吸煙率、增加二手煙暴露量", "減少民眾戶外活動、提高呼吸道感染率"] },
+            { id: 132, cat: "控酒知識", q: "以下哪種情況下不應飲酒？", ans: "運動前後或期間、操作儀器、駕駛車輛", distractors: ["在安全家中休息且無需駕車時", "成年人聚餐且無任何疾病時", "睡前飲用少量溫開水時"] },
+            { id: 133, cat: "控酒知識", q: "以下哪一類人群不應飲酒？", ans: "少年兒童、懷孕或備孕婦女、患有痛風及高血壓等疾病人士", distractors: ["體格健壯的成年運動員、無慢性病史人士、已退休的長者", "日常飲食均衡的上班族、不需駕駛車輛人士、無過敏史成年人", "喜歡戶外遠足的青年、體重標準的成年男性、作息規律人士"] },
+            { id: 134, cat: "控酒政策", q: "控制酒精銷售的最常見方法是？", ans: "增加酒精稅收", distractors: ["發放購酒消費券", "降低烈酒進口關稅", "鼓勵24小時售賣酒精飲料"] },
+            { id: 135, cat: "控酒知識", q: "在酗酒者中會增加自殺危險性的特別因素包括早發性酗酒、酒精依賴程度高以及？", ans: "有酗酒之家族史", distractors: ["喜歡飲用純淨水", "經常參加體育鍛煉", "飲食清淡規律"] },
+            { id: 136, cat: "控酒知識", q: "每克酒精約提供多少千卡熱量，差不多是碳水化合物或蛋白質所含熱量的兩倍？", ans: "7千卡熱量", distractors: ["1千卡熱量", "15千卡熱量", "2千卡熱量"] },
+            { id: 137, cat: "澳門控酒法", q: "根據澳門《預防及控制未成年人飲用酒精飲料制度》，以下哪種行為違法？", ans: "指示未成年人銷售酒精飲料；向未滿18歲之人士銷售或提供酒精飲料", distractors: ["向成年人出售酒精濃度1.5%的啤酒", "在超級市場設置酒精飲料專區", "未成年人在餐廳飲用純果汁"] },
+            { id: 138, cat: "澳門控酒法", q: "根據澳門控酒法，酒精濃度在百分之多少以上的飲料將被界定為酒精飲料？", ans: "1.2%", distractors: ["0.5%", "3.5%", "5.0%"] },
+            { id: 139, cat: "控酒知識", q: "酒精被列為第幾類人類致癌物？", ans: "第一類", distractors: ["第二類", "第三類", "非致癌物"] },
+            { id: 140, cat: "澳門控酒法", q: "澳門控酒法規定以下場所禁止飲用酒精飲料？", ans: "診所、衛生中心、托兒所、幼稚園、中、小學校", distractors: ["私人住宅客廳", "持牌酒吧與夜總會", "允許售酒的西餐廳"] },
+            { id: 141, cat: "健康生活", q: "1992年世衛提出「戒煙限酒」是健康的四大基石之一，而在2018年世衛組織將「戒煙限酒」變為了什麼？", ans: "戒煙戒酒", distractors: ["吸煙飲酒", "限煙限酒", "戒煙多酒"] },
+            { id: 142, cat: "控酒政策", q: "世界衛生組織針對減少有害使用酒精的策略包括哪些？", ans: "社區共同行動、價格管控政策、各國家衛生機構的應對行動", distractors: ["降低烈酒進口關稅、鼓勵深夜酒吧促銷、開放未成年人購酒", "取消酒駕呼氣測試、放寬酒精廣告限制、發放酒類消費補貼", "推廣校園品酒課程、提高飲品酒精濃度、取消售酒牌照制度"] },
+            { id: 143, cat: "控酒數據", q: "世衛2024年的調查報告指出，在所有年齡組的青少年中，大約每10人中就有幾人有過嚴重醉酒的經歷？", ans: "1人", distractors: ["5人", "8人", "0人"] },
+            { id: 144, cat: "控酒數據", q: "在164個國家中，只有多少個國家沒有對可購買酒精飲料的最低年齡作出限制？", ans: "15個國家", distractors: ["100個國家", "85個國家", "150個國家"] },
+            { id: 145, cat: "澳門控酒法", q: "如屬違反澳門控酒法的累犯，罰款的上限維持不變，下限會提高多少？", ans: "四分之一", distractors: ["二分之一", "一倍", "十分之一"] },
+            { id: 146, cat: "澳門控酒法", q: "為評估控酒法的效果，衛生局須在其生效後每幾年編製一份載有相關跟進資料的報告？", ans: "五年", distractors: ["一年", "十年", "兩年"] },
+            { id: 147, cat: "澳門控酒法", q: "科處控酒法規定的罰款及附加處罰，以及作出不予控訴的決定，屬哪位政府官員的職權？", ans: "衛生局局長", distractors: ["旅遊局局長", "經濟及科技發展局局長", "教育及青年發展局局長"] },
+            { id: 148, cat: "控酒數據", q: "哪個州人均酒精消費量世界第一，且酒精導致死亡的佔比亦全球最高？", ans: "歐洲", distractors: ["亞洲", "非洲", "大洋洲"] },
+            { id: 149, cat: "澳門法律", q: "根據《刑法典》，若因酒後駕駛導致他人死亡或受傷，觸犯「過失殺人罪」或「過失傷害身體完整性罪」，最高刑罰分別可被科處幾年徒刑？", ans: "5年或3年", distractors: ["1年或6個月", "10年或8年", "僅罰款無需監禁"] },
+            { id: 150, cat: "澳門法律", q: "根據《道路交通法》，如果駕駛者無合理理由而拒絕接受呼氣酒精測試，可構成什麼罪行？", ans: "違令罪", distractors: ["輕微違反", "詐騙罪", "誹謗罪"] },
+            { id: 151, cat: "控酒數據", q: "根據世衛報告，全球15歲以上人口的人均純酒精總消費量達到了多少升？", ans: "6.4升", distractors: ["0.5升", "25.0升", "1.2升"] },
+            { id: 152, cat: "控酒數據", q: "根據世衛資料，20至39歲這一年齡組，所有死亡者中約有百分之多少是因酒精造成？", ans: "25%", distractors: ["2%", "5%", "65%"] },
+            { id: 153, cat: "酒精知識", q: "酒精的化學名稱是什麼？", ans: "乙醇", distractors: ["甲醇", "乙醛", "乙酸"] },
+            { id: 154, cat: "酒精知識", q: "酒精的溶解性如何，故其能非常迅速的通過細胞膜，吸收速度極快？", ans: "具有水溶性和脂溶性", distractors: ["完全不溶於水也不溶於脂肪", "只能在強酸環境下溶解", "僅在低溫下才會被腸道吸收"] },
+            { id: 155, cat: "酒精知識", q: "酒精進入身體後，被口腔、喉嚨、胃和腸道所吸收，最終剩餘的一些被什麼器官排出？", ans: "肺和腎臟", distractors: ["心臟和脾臟", "眼睛和耳朵", "大腦和甲狀腺"] },
+            { id: 156, cat: "酒精知識", q: "通常認為酒精主要在肝臟代謝，那麼酒精在人體內經歷以下哪種代謝過程？", ans: "乙醇 → 乙醛 → 乙酸", distractors: ["乙酸 → 乙醛 → 乙醇", "乙醛 → 乙醇 → 葡萄糖", "甲醇 → 甲醛 → 二氧化碳"] },
+            { id: 157, cat: "控酒知識", q: "當血液中酒精濃度為多少時會造成運動失調？", ans: "0.1%", distractors: ["0.01%", "0.5%", "1.0%"] },
+            { id: 158, cat: "澳門控酒法", q: "違反控酒法之罰款應於接獲處罰決定通知之日起多少日內繳付？", ans: "30日", distractors: ["7日", "60日", "90日"] },
+            { id: 159, cat: "控酒知識", q: "懷孕期間飲酒會增加何種風險？", ans: "難產", distractors: ["順產速度加快", "胎兒體重過重", "孕婦血壓完全正常"] },
+            { id: 160, cat: "控酒知識", q: "關於孕期飲酒的說法，以下正確的是？", ans: "沒有所謂的孕期安全飲酒期或安全劑量", distractors: ["懷孕後期飲用少量紅酒有助胎兒發育", "啤酒酒精濃度低，孕婦可放心飲用", "只要飯後飲酒就不會影響胎兒"] },
+            { id: 161, cat: "控酒數據", q: "死於酒害的最主要的原因是什麼？", ans: "酒駕事故及暴力傷害", distractors: ["飲酒後睡眠時間過長", "酒精導致皮膚輕微過敏", "飲酒後食慾不振"] },
+            { id: 162, cat: "酒精知識", q: "乙醛在體內積累會干擾神經遞質，影響什麼的釋放，從而增加情緒病的風險？", ans: "多巴胺", distractors: ["胰島素", "腎上腺素", "甲狀腺素"] },
+            { id: 163, cat: "酒精知識", q: "酒精代謝中間產物——乙醛是幾類致癌物？", ans: "1類", distractors: ["3類", "4類", "無害物質"] },
+            { id: 164, cat: "酒精知識", q: "酒精抑制腎臟排泄尿酸，其代謝過程還增加何種物質的消耗，導致尿酸生成增加？", ans: "三磷酸腺苷", distractors: ["維他命E", "膳食纖維", "葉綠素"] },
+            { id: 165, cat: "控酒知識", q: "喝酒臉紅的人，酒後體內的乙醛濃度是常人的幾倍？", ans: "3-6倍", distractors: ["1倍", "0.5倍", "20倍"] },
+            { id: 166, cat: "控酒知識", q: "喝酒臉紅是甚麼的表現？", ans: "無法代謝酒精的表現", distractors: ["酒量極好的表現", "血液循環健康的表現", "對酒精免疫的表現"] },
+            { id: 167, cat: "酒精知識", q: "當乙醛在身體堆積，會造成甚麼損傷？", ans: "全身血管損傷、神經損傷、肌肉組織損傷", distractors: ["骨骼密度增加、視力敏銳度提升、代謝加快", "皮膚油脂平衡、毛髮生長加速、免疫力增強", "消化吸收改善、肺活量提升、血壓長期穩定"] },
+            { id: 168, cat: "煙草危害", q: "以下心血管疾病與吸煙關係最為直接的是？", ans: "主動脈瘤", distractors: ["先天性心臟瓣膜缺損", "風濕性心臟病", "心肌炎"] },
+            { id: 169, cat: "煙草危害", q: "吸入少量尼古丁會興奮神經系統，吸入過量尼古丁時會對神經系統有什麼影響？", ans: "會有抑制神經系統興奮的效果", distractors: ["會使大腦記憶力永久增強", "會讓人變得更加清醒專注", "對神經系統沒有任何影響"] },
+            { id: 170, cat: "煙草危害", q: "吸煙者手指和指甲會染成黃褐色，是由於煙品中的哪一種物質會累積在手指或指甲上？", ans: "焦油", distractors: ["尼古丁", "一氧化碳", "水蒸氣"] },
+            { id: 171, cat: "二手煙危害", q: "接觸煙草的方式可分為主動吸煙及被動吸煙，以下哪一種疾病是被動吸煙才會導致的？", ans: "兒童急慢性中耳炎", distractors: ["兒童近視眼", "兒童乳牙蛀牙", "兒童扁平足"] },
+            { id: 172, cat: "煙害數據", q: "煙害導致的死亡數持續以跳躍式增加，其主要原因是什麼？", ans: "吸煙致癌有很長的潛伏期；戒煙者多為生病者；人口老化", distractors: ["現代醫療技術倒退；年輕人完全不再吸煙；空氣氧氣減少", "捲煙價格大幅上升；戒煙藥物全面停產；醫院床位數量減少", "二手煙已經完全消失；煙草種植面積歸零；飲食結構過於清淡"] },
+            { id: 173, cat: "二手煙危害", q: "二手煙可引致非吸煙者患上以下哪種疾病？", ans: "肺癌", distractors: ["色盲症", "先天性心臟病", "白化病"] },
+            { id: 174, cat: "煙草危害", q: "以下哪一組是長期吸煙者常見的外形特徵？", ans: "指甲變黃、杵狀指、牙齒煙斑", distractors: ["皮膚白皙、毛孔細緻、指甲紅潤", "眼神明亮、牙齒潔白、氣色紅潤", "髮質濃密、指節修長、唇色粉紅"] },
+            { id: 175, cat: "煙草危害", q: "孕婦吸煙會導致胎兒出現什麼情況？", ans: "發育遲緩", distractors: ["智力超常發育", "出生體重過重", "免疫力大幅提升"] },
+            { id: 176, cat: "煙草危害", q: "吸煙孕婦在懷孕及分娩時有較大機會出現併發症，包括哪些？", ans: "異位妊娠、胎盤早剝、前置胎盤", distractors: ["胎兒過重、產程過快、體溫偏低", "血壓偏低、視力增強、食慾過旺", "骨質增生、關節僵硬、血糖過低"] },
+            { id: 177, cat: "煙草成分", q: "捲煙點燃後會產生對人體有害的物質中，其中哪兩種物質對呼吸道有刺激作用？", ans: "氮化物和醛類", distractors: ["氧氣和氮氣", "維他命C和維他命E", "鈣質和鐵質"] },
+            { id: 178, cat: "煙草危害", q: "煙毒會傷害腦細胞因而影響人的什麼能力？", ans: "記憶力", distractors: ["色覺辨識力", "嗅覺靈敏度", "味覺平衡感"] },
+            { id: 179, cat: "煙草危害", q: "對吸煙的孕婦進行羊膜穿刺研究發現身體內的什麼變異會增高，引致惡性腫瘤或胎兒發育不良？", ans: "染色體", distractors: ["紅血球", "脂肪細胞", "骨髓"] },
+            { id: 180, cat: "三手煙危害", q: "三手煙可以在家居或物件上殘留多久？", ans: "數十天，甚至更長時間", distractors: ["僅5分鐘便完全揮發", "開窗通風10分鐘即消失", "最多殘留2小時"] },
+            { id: 181, cat: "三手煙危害", q: "三手煙殘留在傢俱、牆壁甚至衣服及髮膚上，其中哪種化學物質會造成基因突變引致癌症？", ans: "亞硝基降煙鹼(NNA)", distractors: ["氯化鈉", "碳酸鈣", "葡萄糖"] },
+            { id: 182, cat: "三手煙危害", q: "現時研究證實三手煙的害處有哪些？", ans: "壓力激素水準上升；傷肝傷腦；破壞新陳代謝；增加神經退行性疾病風險", distractors: ["僅會令衣物殘留輕微氣味；不會進入人體血液；開窗通風數分鐘即可完全消除", "能抑制室內細菌滋生；不會對兒童造成影響；僅對長期重度吸煙者有輕微刺激", "只會附著於玻璃表面；可用清水瞬間沖淨；不會對肝臟或大腦造成任何損害"] },
+            { id: 183, cat: "煙草危害", q: "下列哪一項有關吸煙與女性內分泌的描述是正確？", ans: "吸煙使黃體酮水準下降", distractors: ["吸煙使生長激素大幅上升", "吸煙使胰高血糖素消失", "吸煙對內分泌無任何影響"] },
+            { id: 184, cat: "煙害數據", q: "世衛指出全球人類八大死因中有六個與吸煙有關，是哪六個？", ans: "心臟病、腦血管疾病、下呼吸道感染、慢性阻塞性肺病、肺結核及氣管支氣管肺癌", distractors: ["皮膚過敏、近視眼、骨質疏鬆、牙周病、急性腸胃炎及輕微季節性鼻炎", "帕金森病、白內障、甲型肝炎、登革熱、手足口病及急性出血性結膜炎", "痛風症、偏頭痛、腰椎間盤突出、靜脈曲張、扁平足及季節性皮膚乾燥"] },
+            { id: 185, cat: "煙草危害", q: "吸煙可能引起的疾病包括以下哪一組？", ans: "白內障、2型糖尿病、黃斑變性", distractors: ["先天性色盲、血友病、白化病", "登革熱、瘧疾、甲型肝炎", "扁平足、近視眼、乳牙蛀牙"] },
+            { id: 186, cat: "煙草危害", q: "來自權威醫學期刊The Lancet的資料顯示，捲煙對身體造成的生理傷害和依賴性，比什麼毒品還嚴重？", ans: "大麻和搖頭丸", distractors: ["維他命丸", "止痛藥", "安眠藥"] },
+            { id: 187, cat: "煙草成分", q: "焦油中的多環芳香烴致癌物質可導致DNA損害，從而改變細胞的什麼結構使其癌變？", ans: "遺傳結構", distractors: ["水分比例", "細胞體積", "表面溫度"] },
+            { id: 188, cat: "二手煙危害", q: "新生嬰兒時期接觸二手煙，嬰兒猝死症的機會是平常的多少倍？", ans: "2倍", distractors: ["1倍", "0.5倍", "10倍"] },
+            { id: 189, cat: "煙草成分", q: "靜置點燃的捲煙，煙絲並不能完全燃燒，因此會有較多的什麼產生？", ans: "一氧化碳", distractors: ["純氧氣", "臭氧", "氦氣"] },
+            { id: 190, cat: "煙草成分", q: "一氧化碳與人體內的哪一種物質結合使得血液的攜氧能力降低？", ans: "血紅蛋白", distractors: ["白細胞", "血小板", "胰島素"] },
+            { id: 191, cat: "煙草成分", q: "下列哪項有關一氧化碳的敘述是正確的？", ans: "無色無味有毒氣體", distractors: ["帶刺鼻酸味的有色氣體", "無毒且有助呼吸的氣體", "具香甜氣味的液態溶劑"] },
+            { id: 192, cat: "煙草與環境", q: "煙草煙霧所含的溫室氣體有哪些？", ans: "二氧化碳、甲烷、氮氧化物", distractors: ["氧氣、氫氣、氦氣", "臭氧、水蒸氣、氬氣", "氯氣、氟氣、氖氣"] },
+            { id: 193, cat: "二手煙危害", q: "不吸煙的孕婦暴露在二手煙的環境下，會對胎兒造成什麼影響？", ans: "增加流產及胎死腹中的機會", distractors: ["加快胎兒發育並增加出生體重", "增強胎兒出生後的呼吸免疫力", "完全不會透過胎盤影響胎兒"] },
+            { id: 194, cat: "二手煙知識", q: "不吸煙者每週平均有1天以上吸入煙草煙霧多少分鐘以上被判定為存在二手煙暴露？", ans: "15", distractors: ["60", "120", "3"] },
+            { id: 195, cat: "二手煙知識", q: "關於二手煙的別稱，以下哪一組正確？", ans: "被動吸煙、間接吸煙、環境煙草煙霧", distractors: ["主動吸煙、低焦油煙、無煙煙草霧", "三手殘留、電子霧化、加熱煙草煙", "戶外飄煙、室內灰塵、廚房油煙霧"] },
+            { id: 196, cat: "煙草危害", q: "以下關於吸煙導致慢性阻塞性肺病的描述，正確的是？", ans: "肺部氣囊膨脹和破裂；引發黏液堆積；降低肺吸收氧氣的能力；導致二氧化碳滯留", distractors: ["肺部氣囊彈性增強；減少呼吸道黏液分泌；提高肺部攝氧效率；加速二氧化碳排出", "僅會造成輕微喉嚨乾燥；不影響肺泡結構；停止吸煙一天即可令受損肺泡完全復原", "能刺激氣管擴張；增強呼吸肌耐力；僅在高海拔地區吸煙時才會影響血氧飽和度"] },
+            { id: 197, cat: "煙草危害", q: "以下關於肺癌的說法，哪項正確？", ans: "低焦油捲煙不會降低肺癌風險；吸煙量越大年限越長風險越高；戒煙可降低肺癌風險", distractors: ["改吸低焦油捲煙可完全避免肺癌；肺癌風險與吸煙年限無關；戒煙後風險不會改變", "只有重度吸煙者才會患肺癌；二手煙不會引致肺癌；吸煙量減少一半即可零風險", "薄荷捲煙可過濾致癌物降低肺癌率；年輕時吸煙不累積風險；戒煙反而增加肺癌率"] },
+            { id: 198, cat: "煙草成分", q: "尼古丁在人體中親和力最高的組織是肝腎脾，最低的是什麼組織？", ans: "脂肪", distractors: ["大腦神經", "肺部組織", "心臟肌肉"] },
+            { id: 199, cat: "煙草成分", q: "尼古丁進入體內後，主要經由什麼媒介傳送至大腦？", ans: "血液", distractors: ["淋巴液", "胃酸", "膽汁"] },
+            { id: 200, cat: "水煙危害", q: "吸一口水煙的氣量與吸多少捲煙的氣量相當？", ans: "1支捲煙", distractors: ["0.1支捲煙", "完全不含煙霧", "半支捲煙"] },
+            { id: 201, cat: "煙草危害", q: "吸煙如何使病原微生物易於入侵，從而增加呼吸系統感染的風險？", ans: "減少抗炎細胞因數水準", distractors: ["提高呼吸道纖毛擺動速度", "增加血液中的紅血球數量", "促進鼻腔黏膜快速再生"] },
+            { id: 202, cat: "煙草危害", q: "吸煙使人體大量吸入氧化微粒，所包含的哪一種物質會造成生物膜系統的損傷？", ans: "氧自由基", distractors: ["血紅蛋白", "維他命C", "膠原蛋白"] },
+            { id: 203, cat: "煙草危害", q: "吸煙者皮膚會提早老化，這是因為有害物質耗損蛋白質，以及消耗以下哪一種維他命？", ans: "維他命A", distractors: ["維他命K", "維他命D", "維他命B12"] },
+            { id: 204, cat: "煙草危害", q: "吸煙會令血液中的纖維蛋白素原和什麼增加，而導致血凝塊阻塞血管？", ans: "膽固醇", distractors: ["維他命B群", "白蛋白", "葡萄糖"] },
+            { id: 205, cat: "煙草危害", q: "吸煙影響精子活力，使畸形精子增多，故提倡停止吸煙多久才可備孕生BB？", ans: "3-6個月", distractors: ["1天", "1週", "2年"] },
+            { id: 206, cat: "煙草危害", q: "長期吸煙者血液中的碳氧血紅蛋白濃度可超過正常的百分之多少？", ans: "20%", distractors: ["1%", "5%", "80%"] },
+            { id: 207, cat: "煙草危害", q: "孕婦吸煙在妊娠初期會令體內哪種物質分泌量減少，進而引致妊娠終止或自發性流產？", ans: "黃體酮", distractors: ["胰島素", "腎上腺素", "褪黑激素"] },
+            { id: 208, cat: "口腔健康", q: "長期吸煙使焦油沉積於牙面形成煙斑，其主要分佈的位置以哪裡為最多？", ans: "上磨牙齶側", distractors: ["下門牙唇側", "犬齒咬合面", "智齒牙根部"] },
+            { id: 209, cat: "煙草危害", q: "尼古丁可啟動一種特定型白細胞，釋放導致炎症增加的分子。該白細胞是什麼？", ans: "中性粒細胞", distractors: ["紅細胞", "血小板", "幹細胞"] },
+            { id: 210, cat: "煙草危害", q: "捲煙內的化學成份會損害眼睛，導致以下哪種疾病產生？", ans: "黃斑病變", distractors: ["先天色盲", "老花眼", "散光"] },
+            { id: 211, cat: "煙草危害", q: "經常吸捲煙者的上下唇粘膜，由於致癌物刺激使唇部和舌尖發生一種癌前期變化，稱為什麼？", ans: "口腔白斑（註：原問題集誤植為脂肪）", distractors: ["牙周膿腫", "口腔潰瘍", "唇部疱疹"] },
+            { id: 212, cat: "煙害與疾病", q: "據研究，吸煙及二手煙暴露與「四大慢病」有關，四大慢病是指？", ans: "惡性腫瘤、心血管疾病、糖尿病、慢性呼吸系統疾病", distractors: ["近視眼、牙周病、骨質疏鬆症、季節性過敏性鼻炎", "甲型肝炎、肺結核、登革熱、急性出血性結膜炎", "痛風症、胃潰瘍、偏頭痛、慢性腎功能衰竭"] },
+            { id: 213, cat: "二手煙危害", q: "二手煙令眼睛感到刺痛、燒灼的感覺，主要原因是二手煙的成分極易刺激眼睛哪一部份？", ans: "結膜", distractors: ["視神經", "晶狀體", "視網膜"] },
+            { id: 214, cat: "二手煙危害", q: "二手煙在孩子肺部留下隱患，一旦遇到冷空氣等刺激，可能導致甚麼後果？", ans: "哮喘發作或慢性支氣管炎", distractors: ["視力模糊或急性結膜炎", "關節疼痛或肌肉痙攣", "食慾不振或急性腸胃炎"] },
+            { id: 215, cat: "二手煙危害", q: "二手煙攻擊孩子最需要保護的哪兩個系統？", ans: "免疫系統和呼吸系統", distractors: ["骨骼系統和泌尿系統", "生殖系統和內分泌系統", "消化系統和淋巴系統"] },
+            { id: 216, cat: "二手煙危害", q: "二手煙對孩子的傷害，可能在幾十年後以更可怕的形式顯現出來，例如什麼風險？", ans: "癌症", distractors: ["近視", "蛀牙", "骨折"] },
+            { id: 217, cat: "二手煙危害", q: "二手煙暴露導致兒童最常見的健康問題之一是什麼？", ans: "中耳炎", distractors: ["扁平足", "白內障", "痛風症"] },
+            { id: 218, cat: "二手煙危害", q: "二手煙導致嬰兒猝死綜合征（SIDS）的風險增加多少倍？", ans: "2-3倍", distractors: ["0.5倍", "10倍", "20倍"] },
+            { id: 219, cat: "煙草危害", q: "女性吸煙對生殖健康的影響包括哪些？", ans: "增加宮外孕風險、提高卵巢癌風險、降低受孕率", distractors: ["縮短懷孕週期、提高受孕機率、減少經期不適", "延緩更年期到來、穩定內分泌、增加雌激素水平", "降低分娩疼痛感、促進胎盤血流、提高卵子活力"] },
+            { id: 220, cat: "控煙知識", q: "以下哪個年齡段開始吸煙，成癮性最高且戒煙最困難？", ans: "兒童及青春期", distractors: ["30-40歲", "50-60歲", "65歲以上"] },
+            { id: 221, cat: "煙草危害", q: "吸煙對消化系統的危害包括以下哪一組？", ans: "胃食管反流病、克羅恩病、肝細胞癌", distractors: ["甲型肝炎、急性盲腸炎、膽囊息肉", "食物過敏、乳糖不耐症、腸道寄生蟲", "消化吸收加快、胃酸平衡、腸道菌群增加"] },
+            { id: 222, cat: "煙草危害", q: "以下是吸煙導致新生兒唇齶裂的可能機制，哪項正確？", ans: "尼古丁導致子宮血管收縮使胎兒缺氧；一氧化碳干擾神經脊細胞遷移；多環芳烴干擾葉酸代謝", distractors: ["焦油直接進入胎盤並改變羊水溫度；尼古丁促進葉酸過度吸收；一氧化碳加速骨骼鈣化", "煙霧中的水分稀釋母體血液濃度；尼古丁擴張子宮動脈血管；焦油刺激胎兒體重暴增", "一氧化碳增加胎盤攜氧能力；多環芳烴促進神經細胞分裂；尼古丁抑制母體維他命D合成"] },
+            { id: 223, cat: "三手煙危害", q: "以下哪種人群最容易受到三手煙的危害？", ans: "嬰幼兒和兒童", distractors: ["成年男性", "青年運動員", "中年上班族"] },
+            { id: 224, cat: "二手煙知識", q: "以下哪種行為可以有效減少二手煙危害？", ans: "完全禁止在室內任何場所吸煙", distractors: ["在室內打開抽油煙機或電風扇", "在室內使用空氣清新劑噴霧", "躲在室內洗手間關門吸煙"] },
+            { id: 225, cat: "煙草危害", q: "以下哪組物質的職業暴露與吸煙協同作用，會大幅增加肺癌風險？", ans: "石棉、氡氣、砷", distractors: ["氧氣、氮氣、鈣", "純水、食鹽、鐵", "酒精、蔗糖、鉀"] },
+            { id: 226, cat: "煙草危害", q: "以下哪種疾病在吸煙者中的發病率顯著高於非吸煙者？", ans: "類風濕關節炎", distractors: ["先天性色盲", "白化病", "血友病"] },
+            { id: 227, cat: "煙草與疾病", q: "以下哪種疾病與吸煙沒有明確的因果關係？", ans: "帕金森病", distractors: ["肺癌", "慢性阻塞性肺病", "冠心病"] },
+            { id: 228, cat: "煙草危害", q: "以下哪種維生素在吸煙者體內消耗增加，需要額外補充？", ans: "維生素C", distractors: ["維生素K", "維生素D", "維生素B12"] },
+            { id: 229, cat: "三手煙危害", q: "以下哪種說法正確描述了「三手煙」？", ans: "吸煙後殘留在環境表面和灰塵中的煙草殘留物", distractors: ["吸煙者直接吸入肺部再呼出的主流煙霧", "捲煙靜置燃燒時從煙頭冒出的支流煙霧", "電子煙加熱霧化後飄散在空中的氣溶膠"] },
+            { id: 230, cat: "煙草與癌症", q: "以下哪種癌症與吸煙的關係最密切？", ans: "膀胱癌", distractors: ["骨癌", "腦膠質瘤", "甲狀腺癌"] },
+            { id: 231, cat: "二手煙知識", q: "以下關於「二手煙暴露沒有安全水準」的說法，正確的是哪項？", ans: "任何劑量的二手煙暴露都會增加健康風險", distractors: ["每日接觸少於30分鐘即屬絕對安全範圍", "只要在室內開啟冷氣即可消除二手煙害", "成年人對少量二手煙具有天然免疫能力"] },
+            { id: 232, cat: "煙草成分", q: "以下關於煙草煙霧和汽車尾氣的比較，正確的是哪項？", ans: "苯並芘是汽車尾氣的4倍", distractors: ["苯並芘是汽車尾氣的0.5倍", "兩者完全相同", "苯並芘是汽車尾氣的10倍"] },
+            { id: 233, cat: "煙草危害", q: "尼古丁會抑制呼吸道甚麼組織的運動，導致痰液積聚？", ans: "纖毛", distractors: ["聲帶", "扁桃體", "軟骨"] },
+            { id: 234, cat: "煙草危害", q: "尼古丁會抑制膠原蛋白的合成，導致皮膚出現甚麼問題？", ans: "鬆弛皺紋", distractors: ["毛髮濃密", "膚色紅潤", "彈性增強"] },
+            { id: 235, cat: "煙害數據", q: "平均而言，吸煙女性的生理年齡是實際年齡的多少倍？", ans: "2倍", distractors: ["1.2倍", "1.5倍", "3倍"] },
+            { id: 236, cat: "煙害數據", q: "平均而言，吸煙男性的生理年齡是實際年齡的多少倍？", ans: "1.5倍", distractors: ["1.1倍", "2倍", "2.5倍"] },
+            { id: 237, cat: "煙害數據", q: "全球每年因煙草死亡的人數約為多少？", ans: "800萬", distractors: ["80萬", "150萬", "3000萬"] },
+            { id: 238, cat: "煙害數據", q: "吸一支捲煙會減少吸煙者大約多少分鐘的壽命？", ans: "11分鐘", distractors: ["1分鐘", "30分鐘", "60分鐘"] },
+            { id: 239, cat: "煙草危害", q: "吸煙孕婦的胎兒發生以下哪種問題的風險最高？", ans: "低出生體重", distractors: ["巨嬰症", "體溫過高", "多指畸形"] },
+            { id: 240, cat: "煙害數據", q: "吸煙者平均壽命比不吸煙者短多少年？", ans: "10年", distractors: ["1年", "25年", "3年"] },
+            { id: 241, cat: "煙草危害", q: "吸煙者患牙周病的風險是非吸煙者的多少倍？", ans: "4-5倍", distractors: ["1倍", "0.5倍", "15倍"] },
+            { id: 242, cat: "煙害數據", q: "吸煙者患冠心病的風險大約是非吸煙者的多少倍？", ans: "2-4倍", distractors: ["1倍", "0.5倍", "10-12倍"] },
+            { id: 243, cat: "煙害數據", q: "吸煙者患胰腺癌的風險是非吸煙者的多少倍？", ans: "2-3倍", distractors: ["0.8倍", "1倍", "8-10倍"] },
+            { id: 244, cat: "煙草危害", q: "吸煙者患結核病的風險更高且預後更差，原因是什麼？", ans: "吸煙損害肺部巨噬細胞功能，降低清除結核菌能力", distractors: ["捲煙煙霧本身含有大量活體結核分枝桿菌", "尼古丁會與抗結核藥物產生劇烈化學爆炸", "吸煙導致體溫過低使結核菌在肺部休眠"] },
+            { id: 245, cat: "煙害數據", q: "吸煙者發生白內障的風險是非吸煙者的多少倍？", ans: "2倍", distractors: ["1倍", "0.5倍", "6倍"] },
+            { id: 246, cat: "煙草危害", q: "吸煙者發生胃潰瘍的風險更高，主要原因是什麼？", ans: "吸煙減少胃黏膜血流，削弱防禦機制", distractors: ["吸煙促進胃壁增厚，導致消化過快", "尼古丁中和胃酸，令胃部無法殺菌", "煙焦油直接阻塞食道，令食物滯留"] },
+            { id: 247, cat: "煙草危害", q: "吸煙者發生視網膜靜脈阻塞的風險增加，主要機制是什麼？", ans: "血液黏稠度增加和血管硬化", distractors: ["眼球晶狀體透明度大幅提升", "眼壓過低導致視神經萎縮", "淚液分泌過多引起眼角膜水腫"] },
+            { id: 248, cat: "煙草與癌症", q: "吸煙是導致以下哪種癌症最主要的危險因素？", ans: "肺癌", distractors: ["骨癌", "腦膜瘤", "甲狀腺癌"] },
+            { id: 249, cat: "煙草危害", q: "吸煙會引發全身組織炎症，破壞皮膚的什麼功能？", ans: "屏障功能", distractors: ["排汗功能", "觸覺功能", "毛髮生長功能"] },
+            { id: 250, cat: "煙草危害", q: "吸煙會使皮膚老化加速，主要原因是什麼？", ans: "尼古丁收縮血管減少皮膚營養供應；焦油直接損傷膠原蛋白；一氧化碳結合血紅蛋白致皮膚缺氧", distractors: ["煙霧令皮膚水分過度飽和引起水腫；尼古丁加速膠原蛋白增生；焦油阻擋紫外線照射皮膚", "一氧化碳提升皮膚微血管攜氧能力；尼古丁促進表皮細胞快速更新；焦油增加皮膚油脂彈性", "捲煙燃燒產生的熱量令毛孔永久閉合；尼古丁降低體溫減少代謝；煙霧中和皮膚表面弱酸性"] },
+            { id: 251, cat: "煙草危害", q: "吸煙會增加女性患宮頸癌的風險，其主要機制是？", ans: "吸煙抑制免疫系統，使HPV感染更容易持續", distractors: ["吸煙直接改變子宮頸形狀", "尼古丁促進細菌在皮膚表面生長", "煙焦油直接進入子宮"] },
+            { id: 252, cat: "煙草危害", q: "吸煙會導致男性勃起功能障礙（ED），主要機制是？", ans: "吸煙損傷血管內皮，影響陰莖血流", distractors: ["吸煙導致骨盆骨折", "吸煙使體溫過低", "吸煙增加睡眠時間"] },
+            { id: 253, cat: "煙草危害", q: "吸煙會導致氣管內壁增厚，進而造成哪種狀況？", ans: "氣道阻塞", distractors: ["肺活量增大", "氣管擴張", "呼吸頻率減慢"] },
+            { id: 254, cat: "煙草危害", q: "吸煙對免疫系統的主要影響是什麼？", ans: "抑制免疫功能，增加感染和自身免疫病風險", distractors: ["激活免疫細胞，降低季節性流感感染機率", "僅影響皮膚表面防禦，不影響體內免疫系統", "短期降低免疫力，長期吸煙則可產生抗體"] },
+            { id: 255, cat: "煙草與癌症", q: "吸煙與以下哪種消化系統癌症關係最密切？", ans: "食管癌", distractors: ["闌尾癌", "膽管良性息肉", "小腸脂肪瘤"] },
+            { id: 256, cat: "煙草危害", q: "吸煙與以下哪組眼部疾病有關？", ans: "老年性黃斑變性、白內障、青光眼", distractors: ["先天性色盲、夜盲症、老花眼", "散光、遠視眼、眼球震顫", "斜視、弱視、淚腺發達"] },
+            { id: 257, cat: "煙草危害", q: "吸煙與以下哪組腎臟疾病有關？", ans: "腎癌、慢性腎炎、尿毒症", distractors: ["腎上腺素過高、膀胱結石、尿頻", "先天性單腎、腎臟移位、多囊肝", "低尿酸血症、低血壓、電解質過高"] },
+            { id: 258, cat: "煙草與癌症", q: "吸煙與乳腺癌的關係，以下哪項正確？", ans: "吸煙增加乳腺癌風險，尤其在長期吸煙和年輕時開始吸煙的女性", distractors: ["吸煙與乳腺癌完全沒有關聯，僅與呼吸系統疾病有關", "吸煙可降低雌激素分泌，從而有效預防女性患上乳腺癌", "僅在更年期後開始吸煙的女性才會出現輕微乳腺癌風險"] },
+            { id: 259, cat: "煙草危害", q: "吸煙導致男性精子品質下降，其原因有哪些？", ans: "精子DNA損傷、精子數量減少、精子活力降低、精子畸形率增加", distractors: ["精子體積過度增大、活動速度過快、數量異常倍增、壽命延長", "僅令精液顏色略微改變，不會影響精子DNA或受孕能力", "短期內減少精子數量，但持續吸煙一年後身體會自動適應恢復"] },
+            { id: 260, cat: "口腔健康", q: "吸煙導致的口腔疾病包括有哪些？", ans: "口腔白斑（癌前病變）、牙周炎、口腔癌", distractors: ["牙齒排列不齊、智齒橫生、下顎關節炎", "琺瑯質過厚、唾液分泌過多、牙齦增生", "乳牙遲換、門牙縫隙過寬、咬合過深"] },
+            { id: 261, cat: "煙草危害", q: "吸煙導致的最常見呼吸系統疾病是什麼？", ans: "慢性支氣管炎", distractors: ["急性扁桃體炎", "季節性花粉症", "胸膜積水"] },
+            { id: 262, cat: "煙草危害", q: "吸煙導致肺癌的潛伏期通常為多久？", ans: "20-30年", distractors: ["1-2個月", "1-2年", "50年以上"] },
+            { id: 263, cat: "煙草危害", q: "吸煙導致慢性阻塞性肺疾病（COPD）的主要機制是什麼？", ans: "破壞肺泡和氣道，引起炎症和蛋白酶-抗蛋白酶失衡", distractors: ["令肺部肌肉過度發達，壓迫心臟影響血液回流", "使氣管軟骨鈣化變硬，導致吸氣時聲帶無法閉合", "令紅血球數量驟減，導致肺部無法排出氮氣"] },
+            { id: 264, cat: "煙草危害", q: "吸煙導致糖尿病併發症加重，尤其是哪些併發症？", ans: "糖尿病腎病、糖尿病足、糖尿病視網膜病變", distractors: ["低血糖昏迷、甲狀腺機能亢進、骨質增生", "急性膽囊炎、皮膚濕疹、季節性哮喘", "聽力過度敏銳、血壓偏低、關節過度靈活"] },
+            { id: 265, cat: "煙草危害", q: "吸煙導致聽力損失的可能機制是什麼？", ans: "尼古丁收縮內耳血管，影響供血", distractors: ["煙霧進入耳道導致耳膜直接破裂", "焦油堵塞耳咽管引起中耳積水", "一氧化碳令耳蝸毛細胞過度增生"] },
+            { id: 266, cat: "煙草危害", q: "吸煙讓人老得飛快，尤其是對於實際年齡多少歲以下的女性？", ans: "40歲", distractors: ["60歲", "70歲", "18歲"] },
+            { id: 267, cat: "二手煙危害", q: "孩子因接觸二手煙而使其免疫系統變遲鈍，會導致何種結果？", ans: "更容易生病，且病程更長", distractors: ["較少出現發燒，且痊癒更快", "對常見病毒產生更強抵抗力", "僅影響食慾，不會影響免疫防禦"] },
+            { id: 268, cat: "水煙危害", q: "相比捲煙，關於吸食水煙的說法，以下哪種正確？", ans: "水煙產生的煙霧含有與捲煙類似的有害物質，且可能更多", distractors: ["水煙經過水壺過濾後已去除九成以上致癌物，近乎無害", "水煙只含水果香味與水蒸氣，完全不含尼古丁與一氧化碳", "吸食水煙一小時的煙霧攝入量遠低於吸食一支傳統捲煙"] },
+            { id: 269, cat: "煙草危害", q: "研究顯示吸煙與發生阿爾茨海默病的關係如何？", ans: "吸煙顯著增加阿爾茨海默病風險", distractors: ["吸煙能刺激大腦從而預防阿爾茨海默病", "兩者之間完全沒有任何統計關聯", "僅對有家族病史者有輕微保護作用"] },
+            { id: 270, cat: "二手煙研究", q: "科學家發現，隨二手煙暴露而改變的「基因開關」有多少個？", ans: "11個", distractors: ["1個", "50個", "100個"] },
+            { id: 271, cat: "二手煙危害", q: "被動吸煙導致成年人最常見的死因是？", ans: "冠心病", distractors: ["皮膚癌", "胃潰瘍", "白內障"] },
+            { id: 272, cat: "煙草成分", q: "煙草中的亞硝胺是強致癌物，主要存在於哪裡？", ans: "煙草本身及煙霧中", distractors: ["僅存在於捲煙濾嘴紙內", "僅存在於打火機燃氣中", "僅在煙蒂完全熄滅後產生"] },
+            { id: 273, cat: "煙草危害", q: "煙草中導致吸煙者頭髮早白、脫髮的主要原因是什麼？", ans: "尼古丁收縮頭皮血管，毛囊缺血", distractors: ["煙霧將頭髮染成白色", "焦油直接溶解髮根", "一氧化碳促進頭皮油脂過度分泌"] },
+            { id: 274, cat: "煙草危害", q: "煙草煙霧中的化學物質會直接損害哪種組織，導致其失去彈性甚至破裂？", ans: "肺泡", distractors: ["肋骨", "橫膈膜", "氣管軟骨"] },
+            { id: 275, cat: "煙草危害", q: "煙霧會刺激眼睛，令吸煙者慣性眯眼睛，會導致眼角出現甚麼？", ans: "魚尾紋", distractors: ["黑眼圈", "針眼", "倒睫毛"] },
+            { id: 276, cat: "煙草誤區", q: "關於「低焦油」捲煙，以下哪項是正確的？", ans: "低焦油捲煙同樣會導致成癮和多種疾病", distractors: ["低焦油捲煙可大幅降低患上肺癌的機率", "低焦油捲煙不含尼古丁，適合用來戒煙", "低焦油捲煙產生的二手煙對兒童無害"] },
+            { id: 277, cat: "煙草誤區", q: "關於「輕淡」捲煙的說法，以下正確的是？", ans: "吸煙者會通過深吸、增加吸煙支數等方式補償，實際攝入有害物不減少", distractors: ["輕淡捲煙煙霧溫和，可令吸煙者自然減少每日吸煙支數及尼古丁攝入", "輕淡捲煙已透過特殊濾嘴完全阻隔一氧化碳及重金屬進入人體肺部", "輕淡捲煙專為女性與年輕人設計，長期吸食不會引致心血管硬化"] },
+            { id: 278, cat: "煙草誤區", q: "關於「薄荷醇捲煙」，以下哪項正確？", ans: "薄荷醇的麻醉作用使吸煙者吸入更深、更久，可能增加危害", distractors: ["薄荷醇具清涼潤喉功效，可有效中和煙焦油對呼吸道的刺激", "薄荷醇能分解尼古丁，幫助長期吸煙者逐步減輕煙草依賴", "薄荷醇捲煙燃燒溫度較低，不會產生致癌物苯並芘及甲醛"] },
+            { id: 279, cat: "二手煙危害", q: "關於二手煙，以下哪種說法是正確的？", ans: "二手煙中含有多種有毒有害物質和致癌物", distractors: ["二手煙經過空氣稀釋後已不具致癌風險", "只要不見明顯煙霧就代表沒有二手煙害", "二手煙只會刺激鼻腔，不會影響心血管"] },
+            { id: 280, cat: "水煙危害", q: "關於水煙的描述，以下哪項正確？", ans: "水過濾無法去除有害物；一次吸入量可相當於100支捲煙；共用煙嘴可傳染疾病；同樣致癮", distractors: ["水過濾可清除絕大部分焦油；一次吸入量僅等於半支捲煙；共用煙嘴不會傳播細菌；無成癮性", "水煙屬純草本養生飲品替代物；不會產生一氧化碳；僅限室內通風處使用即對健康無害", "水煙溫度極低不產生致癌物；比傳統捲煙更有助戒煙；青少年偶爾嘗試不會造成尼古丁依賴"] },
+            { id: 281, cat: "煙草危害", q: "關於咀嚼煙草，以下哪項是正確的？", ans: "咀嚼煙草可導致口腔癌、食道癌和胰腺癌", distractors: ["咀嚼煙草無需燃燒，因此完全不會致癌", "咀嚼煙草只會令牙齒染色，不引致成癮", "咀嚼煙草屬世界衛生組織推薦的戒煙品"] },
+            { id: 282, cat: "戒煙知識", q: "根據香港政府2018年統計，導致戒煙失敗的最普遍提及原因有哪些？", ans: "不夠決心；吸煙已成為習慣或嗜好；許多朋友同事均為吸煙人士", distractors: ["戒煙門診收費過於昂貴；市面上完全買不到戒煙貼；醫生不建議戒煙", "戒煙後視力急劇退化；戒煙令工作壓力完全消失；親友強烈反對戒煙", "政府規定須滿60歲方可戒煙；戒煙藥物無效；戒煙後體重立即暴跌"] },
+            { id: 283, cat: "戒煙知識", q: "檢驗戒煙者是否停止吸煙的方法是什麼？", ans: "測定血漿可丁寧水準", distractors: ["測量身高與體重變化", "檢查手指是否還有煙味", "測量血壓與心跳速度"] },
+            { id: 284, cat: "戒煙方法", q: "戒煙不僅需要毅力，還要有科學的戒煙方法，包括有迴避法、拒絕法和什麼法？", ans: "轉移法", distractors: ["減量替換法", "電子煙過渡法", "熬夜消耗法"] },
+            { id: 285, cat: "戒煙知識", q: "使用戒煙吸劑（由膠吸管及藥芯組成）時，尼古丁經由什麼途徑傳送到人體內？", ans: "口腔粘膜", distractors: ["肺泡直接吸收", "胃部消化道", "手部皮膚表層"] },
+            { id: 286, cat: "戒煙知識", q: "醫藥公司銷售尼古丁替代療法以幫助戒煙，下列哪種屬於替代療法產品？", ans: "尼古丁貼片", distractors: ["薄荷潤喉糖", "電子煙煙彈", "草本無煙捲"] },
+            { id: 287, cat: "戒煙知識", q: "尼古丁替代療法是最常用的戒煙方法，請問尼古丁替代療法的簡稱是什麼？", ans: "NRT", distractors: ["WHO", "FCTC", "EVALI"] },
+            { id: 288, cat: "戒煙知識", q: "各種戒煙藥物與安慰劑，臨床對照其戒斷率最高的是哪一種？", ans: "Varenicline伐尼克蘭", distractors: ["阿司匹林", "布洛芬", "青黴素"] },
+            { id: 289, cat: "戒煙知識", q: "煙齡長、吸煙量大的人，戒煙後所出現的戒斷症狀將會在多久後逐漸減弱至消失？", ans: "3-4週", distractors: ["1天", "2年", "6個月"] },
+            { id: 290, cat: "戒煙知識", q: "戒煙常見的退癮徵狀包括以下哪一組？", ans: "飢餓感、喉乾舌燥、四肢刺痛", distractors: ["視力驟降、聽力喪失、關節脫位", "體溫過低、毛髮脫落、皮膚變黑", "心跳驟停、記憶完全消失、骨折"] },
+            { id: 291, cat: "戒煙知識", q: "以下哪一種為非尼古丁類的戒煙藥物？", ans: "伐尼克蘭", distractors: ["尼古丁貼片", "尼古丁口香糖", "尼古丁吸入劑"] },
+            { id: 292, cat: "戒煙知識", q: "成功戒煙後因食慾增加和新陳代謝減慢，6個月後體重平均會增加多少磅？", ans: "5至10磅", distractors: ["1至2磅", "20至30磅", "40至50磅"] },
+            { id: 293, cat: "戒煙知識", q: "使用戒煙藥物大約能將戒煙成功率提高多少倍？", ans: "1至2倍", distractors: ["0.1倍", "5至6倍", "10倍以上"] },
+            { id: 294, cat: "戒煙知識", q: "關於戒煙貼（尼古丁貼片）的正確用法，以下哪項正確？", ans: "每天一片貼於清潔乾爽皮膚、每日更換黏貼位置以減低敏感，游泳洗澡期間也可使用", distractors: ["每次須同時貼上三片並固定於同一位置一週、洗澡及游泳前必須撕下並立即丟棄", "僅於感到強烈煙癮時才臨時黏貼一小時、貼於傷口或濕潤皮膚上可加快尼古丁吸收", "必須貼於胸口正中央不可更換部位、每三天更換一片且使用期間不可進行任何運動"] },
+            { id: 295, cat: "戒煙知識", q: "「5A戒煙干預模型」的5個要點是指？", ans: "詢問煙草使用與健康狀況、提供針對性建議、評估意願與依賴度、予以行為支持、安排隨訪", distractors: ["要求立即簽署戒煙罰款合約、沒收所有打火機、強制住院隔離、每週驗血、取消門診跟進", "免費派發低焦油捲煙替代、減少每日睡眠時間、建議改用電子煙、無需評估依賴度、自行戒斷", "僅派發宣傳單張、不主動詢問吸煙史、待出現嚴重肺病才介入、拒絕使用藥物、無需隨訪"] },
+            { id: 296, cat: "戒煙知識", q: "以下列舉的輔助戒煙方式中，哪一項最為有效？", ans: "尼古丁替代療法", distractors: ["改吸低焦油捲煙", "改吸水果味電子煙", "單靠飲用濃茶提神"] },
+            { id: 297, cat: "戒煙知識", q: "戒煙多久時間開始出現戒斷症狀？", ans: "24小時內", distractors: ["1個月後", "半年後", "1年後"] },
+            { id: 298, cat: "戒煙知識", q: "戒煙時可多攝取以下哪種維他命，能幫助安定神經及除掉尼古丁？", ans: "維他命B", distractors: ["維他命K", "維他命D", "維他命E"] },
+            { id: 299, cat: "戒煙知識", q: "適宜黏貼尼古丁貼片的身體部位包括哪些？", ans: "上臂、大腿、背部", distractors: ["眼皮、嘴唇、耳垂", "掌心、腳底、關節", "頭皮、指甲、咽喉"] },
+            { id: 300, cat: "戒煙知識", q: "戒煙後，口腔健康通常會出現哪項明顯改善？", ans: "味覺改善", distractors: ["牙齒變長", "唾液消失", "牙齦萎縮"] },
+            { id: 301, cat: "戒煙知識", q: "使用伐尼克蘭（Varenicline）戒煙不適用於下列哪類人群？", ans: "18歲以下", distractors: ["30至40歲", "50至60歲", "煙齡超過5年"] },
+            { id: 302, cat: "戒煙知識", q: "以下哪個選項是吸煙者戒煙後最常見的戒斷症狀？", ans: "焦慮、易怒、注意力不集中", distractors: ["高燒不退、皮膚紅斑、關節變形", "視力模糊、耳鳴失聰、雙腿無力", "體溫驟降、呼吸暫停、意識喪失"] },
+            { id: 303, cat: "戒煙知識", q: "以下哪項是「尼古丁替代療法」的正確使用原則？", ans: "戒煙日當天開始使用，並按療程逐漸減量", distractors: ["一邊維持原吸煙量一邊無限期貼用戒煙貼", "戒煙失敗後才開始使用，且每次需加倍劑量", "僅於睡前使用一小時，翌日即可立即停用"] },
+            { id: 304, cat: "戒煙方法", q: "以下哪種方法能有效幫助戒煙？", ans: "設定戒煙日並告知親友；使用尼古丁替代療法；進行戒煙諮詢", distractors: ["改吸薄荷爆珠捲煙；獨自隱瞞戒煙決定；熬夜工作分散注意", "轉用高濃度尼古丁鹽電子煙；避免求助醫生；多喝含糖汽水", "逐步增加每日吸煙支數；在餐後多抽一支；減少戶外體育活動"] },
+            { id: 305, cat: "戒煙知識", q: "吸煙者發生急性心肌梗死的風險在戒煙後多久開始顯著下降？", ans: "1年", distractors: ["10分鐘", "20年", "永不下降"] },
+            { id: 306, cat: "戒煙知識", q: "戒煙大約多久後，心血管疾病風險開始顯著下降？", ans: "1年內", distractors: ["10分鐘內", "15年後", "永不下降"] },
+            { id: 307, cat: "戒煙知識", q: "戒煙後，心率下降和血壓改善通常在戒煙後多久出現？", ans: "20分鐘內", distractors: ["1年後", "6個月後", "3週後"] },
+            { id: 308, cat: "戒煙知識", q: "戒煙後，肺功能改善和咳嗽減少大約在戒煙後多久出現？", ans: "1-3個月", distractors: ["10分鐘", "5年", "10年"] },
+            { id: 309, cat: "戒煙知識", q: "戒煙後，咳嗽和咳痰增多的情況通常是？", ans: "肺部纖毛功能恢復，清除積存分泌物的正常現象", distractors: ["戒煙導致肺部迅速惡化", "說明必須重新吸煙才能止咳", "對空氣產生了嚴重過敏"] },
+            { id: 310, cat: "戒煙知識", q: "戒煙後，發生中風的超額風險大約在戒煙多久後消失？", ans: "5-10年", distractors: ["1-2週", "3-6個月", "30年以上"] },
+            { id: 311, cat: "戒煙知識", q: "戒煙後，發生肺癌的風險大約需要多久才能降至不吸煙者水準？", ans: "無法完全降至不吸煙者水準，但風險顯著降低", distractors: ["戒煙滿一個月即可完全降至與不吸煙者相同", "戒煙後肺癌風險不但不會下降反而持續上升", "戒煙滿一年後即可徹底消除所有過往致癌風險"] },
+            { id: 312, cat: "戒煙知識", q: "戒煙熱線提供的服務主要是什麼？", ans: "提供戒煙諮詢、支援和行為指導", distractors: ["提供免費捲煙試吸與品牌比較", "專門受理違法吸煙罰款上訴", "代為訂購海外免稅煙草產品"] },
+            { id: 313, cat: "戒煙知識", q: "戒煙藥物伐尼克蘭（Varenicline）的主要作用機制是什麼？", ans: "阻斷尼古丁受體，減輕戒斷症狀", distractors: ["直接清除肺部積存的所有焦油", "透過皮膚持續釋放高劑量尼古丁", "刺激味蕾令所有食物變得苦澀"] },
+            { id: 314, cat: "戒煙知識", q: "關於「戒煙後復吸」，以下哪項正確？", ans: "多次嘗試戒煙是正常的，每次嘗試都能增加最終成功的可能性", distractors: ["只要出現一次復吸就代表永遠無法戒煙，應立即放棄嘗試", "復吸代表戒煙藥物完全失效，之後不應再尋求任何專業協助", "成功戒煙者均是一次即完全戒斷，從不會經歷任何復吸過程"] },
+            { id: 315, cat: "戒煙知識", q: "關於「戒煙後體重增加」，以下說法哪項正確？", ans: "戒煙後體重增加的平均幅度約為4-5公斤，可通過運動和控制飲食減輕", distractors: ["戒煙必定導致嚴重肥胖且體重增加逾20公斤，因此不建議吸煙者戒煙", "戒煙後新陳代謝會永久停滯，即使控制飲食與規律運動也無法減輕體重", "吸煙是安全有效的健康減肥方式，其對身體的益處遠大於體重微升風險"] },
+            { id: 316, cat: "煙草植物學", q: "現時被栽培利用的兩種煙草名稱是什麼？", ans: "紅花煙草和黃花煙草", distractors: ["白花煙草和紫花煙草", "藍花煙草和綠花煙草", "黑花煙草和金花煙草"] },
+            { id: 317, cat: "煙草成分", q: "吸煙時所產生的不含尼古丁的脫水濃縮物即是什麼？", ans: "煙焦油", distractors: ["一氧化碳", "丙二醇", "亞硝胺"] },
+            { id: 318, cat: "煙草成分", q: "支流煙中部分有害物質的濃度甚至比主流煙更高，如一氧化碳、苯及什麼？", ans: "碳氫化合物", distractors: ["純淨水蒸氣", "維他命B群", "碳酸鈣微粒"] },
+            { id: 319, cat: "煙草成分", q: "焦油中含有一種促癌物質，本身不改變細胞遺傳結構，但能促進細胞癌變發展，這種物質是什麼？", ans: "酚類", distractors: ["葡萄糖", "胺基酸", "氯化鈉"] },
+            { id: 320, cat: "煙草成分", q: "尼古丁是一種神經毒素，它的化學特性如何？", ans: "易揮發、強鹼性", distractors: ["難揮發、強酸性", "固態結晶、無毒性", "不溶於水、完全惰性"] },
+            { id: 321, cat: "煙草成分", q: "煙草中哪一種有毒物質會破壞維生素C吸收，加速膠原蛋白流失，導致皮膚缺水、皺紋增加？", ans: "尼古丁", distractors: ["二氧化碳", "水蒸氣", "氧氣"] },
+            { id: 322, cat: "煙草成分", q: "以下哪個化學物質是煙草煙霧中最主要的致癌物之一，也是煤焦油中的主要成分？", ans: "苯並芘", distractors: ["維他命E", "乳酸鈉", "碳酸氫鈉"] },
+            { id: 323, cat: "煙草成分", q: "以下哪組物質是煙草煙霧中已知的一類致癌物？", ans: "苯並芘、甲醛、亞硝胺", distractors: ["氧氣、氮氣、水蒸氣", "鈣質、鐵質、維他命C", "葡萄糖、果糖、澱粉"] },
+            { id: 324, cat: "煙草危害", q: "長期吸煙會導致牙齒和手指變黃，主要是因為煙草中的哪種物質？", ans: "焦油", distractors: ["一氧化碳", "甲烷", "氧氣"] },
+            { id: 325, cat: "煙草成分", q: "煙草中何種有毒成份會使肺泡毛細血管收縮？", ans: "尼古丁", distractors: ["氮氣", "二氧化碳", "水蒸氣"] },
+            { id: 326, cat: "煙草成分", q: "煙草中的主要成癮物質是什麼？", ans: "尼古丁", distractors: ["焦油", "一氧化碳", "甲醛"] },
+            { id: 327, cat: "煙草成分", q: "煙草中的放射性物質主要是什麼？", ans: "釙-210", distractors: ["鈣-40", "鐵-56", "碳-12"] },
+            { id: 328, cat: "煙草成分", q: "煙草煙霧中的丙烯醛主要損傷人體哪個部位？", ans: "呼吸道上皮細胞", distractors: ["大腿骨骼組織", "手部指甲角質", "頭髮毛囊色素"] },
+            { id: 329, cat: "煙草成分", q: "煙草燃燒產生的煙霧中，大約含有多少種已知的有害化學物質？", ans: "約250種", distractors: ["只有3種", "約15種", "約30種"] },
+            { id: 330, cat: "控煙經濟", q: "提高煙草稅帶來的社會效益包括哪些？", ans: "降低吸煙率、挽救生命、增加稅收", distractors: ["增加醫療開支、提高肺癌率、減少稅收", "擴大煙草消費、增加二手煙、削弱警語", "鼓勵青少年購煙、提高火災率、污染空氣"] },
+            { id: 331, cat: "控煙經濟", q: "對於煙草經濟成本方面的敘述，以下哪項是正確的？", ans: "包括吸煙引發的火災損失、清潔成本升高、主動與被動吸煙者的醫療開支及僱員曠工損失", distractors: ["僅限於吸煙者個人購買捲煙的零售花費，不會對社會醫療系統或企業生產力造成任何負擔", "由於煙草稅收入高昂，吸煙不會帶來任何清潔成本、火災損失或公共衛生保健方面的開支", "僅會對煙草種植農民產生微薄運輸成本，對非吸煙者與整體社會經濟完全沒有負面影響"] },
+            { id: 332, cat: "控煙經濟", q: "如果全球禁止煙草廣告，那麼世界煙草消費則會下降百分之多少？", ans: "6.3%", distractors: ["0.1%", "50%", "80%"] },
+            { id: 333, cat: "控煙經濟", q: "捲煙帶來最直接的經濟損失是什麼？", ans: "社會健康維護支出", distractors: ["打火機製造開支", "煙盒紙張印刷費", "海關人員培訓費"] },
+            { id: 334, cat: "控煙經濟", q: "據中國煙草工業統計，每包煙增稅1元，將減少約多少公頃土地用於種植煙葉？", ans: "14000公頃", distractors: ["140公頃", "1400公頃", "140000公頃"] },
+            { id: 335, cat: "控煙經濟", q: "關於中國煙草市場的說法，以下哪項正確？", ans: "中國煙草總公司是唯一合法煙葉買家；提高捲煙稅有效控煙；價差大導致需求價格彈性小", distractors: ["任何私人企業均可自由收購煙葉；提高煙稅完全無法影響銷量；市面上捲煙價格全國統一", "中國已全面停止境內煙草生產；捲煙需求價格彈性極高；所有捲煙均完全依賴外國進口", "煙農可直接於網上向消費者出售原煙葉；降低煙稅最能控煙；各品牌捲煙售價毫無差異"] },
+            { id: 336, cat: "控煙經濟", q: "提高煙稅所帶來的持續發展效益包括哪些？", ans: "減少煙草消費、挽救生命、減少空氣污染", distractors: ["增加森林砍伐、提高碳排放、擴大煙田", "增加煙蒂垃圾、提高醫療負擔、助長吸煙", "降低公共衛生投入、增加二手煙、耗損水源"] },
+            { id: 337, cat: "控煙經濟", q: "世衛組織指出控煙與經濟的關係，以下說法正確的是？", ans: "控煙對煙草相關就業僅產生輕微影響", distractors: ["控煙會導致全球失業率立即倍增崩盤", "控煙令餐飲與旅遊業收入永久腰斬", "煙草產業是各國經濟增長的唯一支柱"] },
+            { id: 338, cat: "煙草經濟", q: "發展中國家對煙草商長期依賴的原因是什麼？", ans: "種植煙草能保證收入；有穩定的肥料供應；產品有確定的銷售市場", distractors: ["種植煙草完全不需農藥肥料；不會消耗土壤肥力；種植過程毫無健康風險", "煙草生長期僅需兩週即可收成；完全無需人工烘烤；市場售價比糧食高百倍", "政府強制要求所有農地只種煙草；禁止種植蔬菜糧食；煙商免費提供農田"] },
+            { id: 339, cat: "控煙經濟", q: "以下關於提高煙草稅的說法，正確的一項是？", ans: "提高煙稅是降低吸煙率最有效的措施", distractors: ["提高煙稅對青少年吸煙率完全沒有作用", "提高煙稅只會令所有吸煙者吸得更多", "提高煙稅會導致政府總稅收大幅歸零"] },
+            { id: 340, cat: "控煙經濟", q: "吸煙帶來眾多的經濟損失，以下對經濟損失程度最大的是？", ans: "醫療成本", distractors: ["煙灰缸清潔費", "廣告印刷費用", "海關巡查開支"] },
+            { id: 341, cat: "控煙經濟", q: "根據世衛組織的資料，使用煙草每年導致多少億美元衛生支出和生產力損失？", ans: "1.4萬億美元", distractors: ["100億美元", "500億美元", "50億美元"] },
+            { id: 342, cat: "煙草與環境", q: "烘烤1公斤煙葉平均需要消耗多少公斤木材？", ans: "7.8公斤", distractors: ["0.5公斤", "2.0公斤", "25.0公斤"] },
+            { id: 343, cat: "控煙數據", q: "從各國情況來看，煙草成癮者較集中於哪一類人群？", ans: "低收入和低教育水準", distractors: ["高收入和高學歷群體", "學齡前幼兒與小學生", "專業長跑與游泳運動員"] },
+            { id: 344, cat: "控煙經濟", q: "煙草除了能營利外毫無其他價值，沒有創新收益和生產力收益，不具備什麼效應？", ans: "經濟乘數效應", distractors: ["溫室氣體效應", "成癮依賴效應", "入門吸煙效應"] },
+            { id: 345, cat: "控煙經濟", q: "關於中國煙草業的稅收與經濟負擔，以下哪項表述是正確的？", ans: "2018年煙草相關疾病的經濟負擔佔GDP的1.7%，是同年煙草稅收的1.3倍", distractors: ["2018年煙草稅收遠高於疾病醫療開支，約為煙草經濟負擔的5倍以上", "2018年煙草相關疾病造成的經濟負擔僅佔GDP的0.05%，幾乎可忽略", "煙草業帶來的稅收足以完全抵銷所有公共醫療及生產力損失並有巨額盈餘"] },
+            { id: 346, cat: "煙草歷史", q: "在什麼時期，英美煙草公司將捲煙包裝成女權運動的文化符號，成功打開了女性市場？", ans: "二十世紀二十年代", distractors: ["十九世紀五十年代", "二十世紀八十年代", "二十一世紀初期"] },
+            { id: 347, cat: "煙草歷史", q: "哪一年英國研究人員首次證實了吸煙是使人體致癌的一大原因？", ans: "1950年", distractors: ["1910年", "1975年", "1998年"] },
+            { id: 348, cat: "煙草歷史", q: "1924年，美國哪本雜誌刊載題目「煙草損害人體健康嗎？」的文章，是第一篇指出煙草有害的文章？", ans: "《讀者文摘》", distractors: ["《時代週刊》", "《國家地理》", "《科學人》"] },
+            { id: 349, cat: "煙草歷史", q: "以下哪一著作記載煙草於明朝由菲律賓傳入中國？", ans: "《露書》", distractors: ["《本草綱目》", "《天工開物》", "《齊民要術》"] },
+            { id: 350, cat: "煙草歷史", q: "煙草製品最早由阿茲泰克人以玉米皮包煙草吸食，後來哪個國家的人用紙取替玉米皮，演變成現代捲煙？", ans: "西班牙", distractors: ["英國", "法國", "荷蘭"] },
+            { id: 351, cat: "煙草歷史", q: "無煙煙草產品最初由哪個國家興起？", ans: "瑞典", distractors: ["美國", "日本", "瑞士"] },
+            { id: 352, cat: "煙草歷史", q: "煙草的起源地是哪個洲？", ans: "美洲", distractors: ["亞洲", "歐洲", "非洲"] },
+            { id: 353, cat: "煙草歷史", q: "1950年後，歐洲掀起了戒煙熱潮，煙草公司推出哪一項騙民製品試圖挽回公司銷量？", ans: "過濾嘴", distractors: ["電子煙", "無煙煙草", "薄荷糖"] },
+            { id: 354, cat: "煙草歷史", q: "將調味劑以膠囊方式嵌入在捲煙濾嘴中，俗稱爆珠煙。大約在2007年，爆珠煙在哪國首次推出？", ans: "日本", distractors: ["英國", "巴西", "埃及"] },
+            { id: 355, cat: "煙草與環境", q: "煙草加工過程中產生的污染包括哪些？", ans: "空氣污染、土地污染、水污染", distractors: ["僅有輕微氣味，不會造成環境污染", "只會產生光污染與電磁輻射污染", "僅消耗電力，完全不產生廢水廢氣"] },
+            { id: 356, cat: "煙草與環境", q: "在海岸和城市環衛清理收集的所有物品中，煙蒂佔多少比例？", ans: "30-40%", distractors: ["1-2%", "5%", "80%"] },
+            { id: 357, cat: "煙草與環境", q: "吸煙會給生活環境帶來哪些多種影響？", ans: "捲煙燃燒產生有害煙霧、煙頭垃圾、捲煙燃燒產生大量灰塵", distractors: ["淨化室內空氣微粒、減少蚊蟲滋生、增加環境濕度", "煙灰可作天然植物肥料、煙頭數小時即自然分解無害", "僅影響室外道路美觀，對室內生活環境空氣毫無影響"] },
+            { id: 358, cat: "煙草與環境", q: "捲煙燃燒會造成空氣污染的物質是？", ans: "一氧化碳、硫氧化合物、煙塵", distractors: ["純氧氣、負離子、水蒸氣", "氮氣、氦氣、二氧化碳晶體", "臭氧層保護氣體、氫氣、稀有氣體"] },
+            { id: 359, cat: "煙草與環境", q: "煙草對多個可持續發展範疇均構成威脅，主要是以下哪三大範疇？", ans: "人體健康、環境保護、經濟負擔", distractors: ["航天科技、海洋漁業、電訊網絡", "建築設計、文物保育、音樂藝術", "體育競技、氣象預報、礦產開採"] },
+            { id: 360, cat: "煙草與環境", q: "自上世紀70年代以來，全球已失去約15億公頃森林，導致溫室氣體每年最高增加多少？", ans: "20%", distractors: ["2%", "5%", "55%"] },
+            { id: 361, cat: "煙草與環境", q: "既往的數據顯示，每生產300支捲煙，僅煙葉烘烤就需要用掉幾棵樹？", ans: "一棵樹", distractors: ["0.01棵樹", "十棵樹", "一百棵樹"] },
+            { id: 362, cat: "煙草與環境", q: "捲煙濾嘴對環境生態傷害非常大，分解濾嘴纖維所需的時間甚至需要長達多少年？", ans: "20年", distractors: ["1個月", "1年", "3天"] },
+            { id: 363, cat: "控煙科技", q: "控煙環境監測器主要檢測空氣中的哪四項指標？", ans: "PM0.3、PM2.5、PM5和TVOC", distractors: ["氧氣、氮氣、氫氣和氦氣", "溫度、濕度、風速和氣壓", "噪音、光照、輻射和磁場"] },
+            { id: 364, cat: "煙草與環境", q: "煙草的種植和加工對於土壤及環境造成的影響，以下哪個敘述正確？", ans: "種植使用過多化肥使土壤板結、加工火烤耗用大量木材、生產捲煙產生大量污水", distractors: ["煙草根系能大幅增加土壤有機養分、加工完全無需燃料、生產過程實現零廢水排放", "種植煙草可防止水土流失與沙漠化、有助森林自然再生、並能淨化周邊河流食水", "煙草加工僅需自然日曬無需木材、所需化肥量遠低於稻米、不會影響當地生態環境"] },
+            { id: 365, cat: "煙草與環境", q: "煙草種植過程易遭受蟲害，需大量使用以下何種化學物質來控制病蟲害，導致環境嚴重破壞？", ans: "殺蟲劑、除草劑、生長調節劑", distractors: ["有機堆肥、純淨雨水、益生菌液", "食用醋液、植物精油、海藻提取物", "碳酸鈣粉、天然草木灰、礦泉水"] },
+            { id: 366, cat: "煙草與環境", q: "2016年數據推測煙草相關的總排放量約為876萬噸CO2等排量，相當於近多少架次跨大西洋航班？", ans: "300萬", distractors: ["30萬", "3萬", "3000萬"] },
+            { id: 367, cat: "煙草與環境", q: "巴西南部的煙草種植嚴重減少了原始森林覆蓋率，導致其不足原來規模的百分之多少？", ans: "2%", distractors: ["15%", "35%", "50%"] },
+            { id: 368, cat: "煙草與環境", q: "關於減少煙草製品廢物的手段——「生產者延伸責任」，以下說法哪項正確？", ans: "有助於改善公共衛生結果；應由煙草生產者提供經費；工作由獨立第三方執行", distractors: ["所有清理經費全由納稅人承擔；由煙草商自行監督評估；與公共衛生目標無關", "只需在煙盒上呼籲市民勿亂丟煙蒂；無需煙草商出資；由非吸煙者分擔清潔費", "鼓勵煙草商將煙蒂回收製成兒童玩具；由政府補貼經費；免除煙草商環保責任"] },
+            { id: 369, cat: "煙草與環境", q: "煙草生長期比許多農作物要長，對土地的營養消耗很大，請問其生長期為多久？", ans: "6個月", distractors: ["1個月", "2個月", "18個月"] },
+            { id: 370, cat: "煙草與環境", q: "解決煙草使用的清潔和處理成本問題，應採用什麼原則？", ans: "預防原則", distractors: ["事後補救原則", "消費者自理原則", "市場放任原則"] },
+            { id: 371, cat: "煙草與環境", q: "有關煙草對環境影響的描述，以下哪項正確？", ans: "一氧化碳影響空氣質量；濾嘴難降解污染土水；加工產生數百萬噸固廢；生產耗樹水產污水", distractors: ["濾嘴屬純天然棉質於雨後三日即完全降解；煙草加工零固體廢物；捲煙用紙全為回收廢紙", "煙草煙霧僅影響室內數平方米空氣；不會滲入土壤水源；捲煙生產耗水量低於一般農產品", "種植與加工煙草有助固定大氣碳排放；其廢棄物可作為優質肥料直接改善農地土質結構"] },
+            { id: 372, cat: "煙草與環境", q: "全球每年的煙草煙霧排放數千噸甲醛、數萬噸尼古丁，以及哪種主要溫室氣體？", ans: "甲烷", distractors: ["氧氣", "氫氣", "氦氣"] },
+            { id: 373, cat: "煙草與環境", q: "煙草種植需要大量的農藥和水，會對土地造成什麼危害？", ans: "土質酸化", distractors: ["土壤肥沃化", "地下水增多", "植被多樣化"] },
+            { id: 374, cat: "環保健康", q: "以下哪一組全部屬於節能減碳的方法？", ans: "家裡換用節能燈泡、戒煙、搭乘公共交通工具、選擇天然纖維材質的衣服", distractors: ["長開冷氣至18度、增加私家車出行、多用即棄塑膠餐具、每日吸食捲煙", "室內全天候開大燈、頻繁網購空運商品、使用高耗電舊家電、燃燒煙草", "以傳統白熾燈取代LED燈、長途單人駕車、多選化纖衣物、隨地丟棄煙蒂"] },
+            { id: 375, cat: "煙草與環境", q: "在中國，每年因煙草種植損失約16,000公頃森林，高達全國森林採伐量的百分之多少？", ans: "18%", distractors: ["2%", "5%", "45%"] },
+            { id: 376, cat: "煙草與環境", q: "每年約有350萬公頃土地因種植煙草而遭到破壞，相當於多少個澳門土地面積？", ans: "1060個", distractors: ["10個", "100個", "5000個"] },
+            { id: 377, cat: "煙草與環境", q: "1支捲煙僅製造過程就會產生多少克的碳排放量？", ans: "900克", distractors: ["1克", "10克", "50克"] },
+            { id: 378, cat: "煙草與環境", q: "煙草種植對環境的影響包括哪些？", ans: "增加溫室氣體排放、森林砍伐、土壤退化、水資源污染", distractors: ["降低全球氣溫、擴大原始森林面積、增加土壤養分、淨化水源", "促進野生動物繁衍、減少農藥使用量、保護生物多樣性、節約用水", "僅消耗少量陽光與雨水，不會對周邊生態系統造成任何負面影響"] },
+            { id: 379, cat: "電子煙危害", q: "多個實驗顯示電子煙哪一種有害物質含量比一般捲煙高？", ans: "甲醛", distractors: ["純淨水蒸氣", "維他命E", "氧氣"] },
+            { id: 380, cat: "電子煙知識", q: "一間煙草公司將加熱型電子煙包裝為捲煙替代製品，更投入10億美元建立了一個基金，這基金叫什麼？", ans: "無煙世界基金", distractors: ["世界衛生基金", "全球戒煙基金", "清新空氣基金"] },
+            { id: 381, cat: "電子煙危害", q: "2019年8月，哪個國家出現了首例電子煙致死病例？", ans: "美國", distractors: ["中國", "英國", "日本"] },
+            { id: 382, cat: "國際控煙", q: "2023年5月，澳洲政府加強電子煙禁令的措施包括哪些？", ans: "禁止進口一次性及果味電子煙；藥店憑處方藥形式銷售；未來三年煙價年漲5%；藥品式包裝", distractors: ["全面開放便利店售賣果味電子煙；取消電子煙處方要求；下調煙稅5%；允許潮流聯名包裝", "僅禁止未成年人於夜間購買電子煙；鼓勵電子煙廣告宣傳；維持傳統捲煙稅率十年不變", "容許自動售貨機出售一次性電子煙；免除進口關稅；改以鮮豔卡通圖案作為標準包裝"] },
+            { id: 383, cat: "電子煙危害", q: "美國一項研究指出哪兩種口味的電子煙煙油對內皮細胞功能的負面影響最為明顯？", ans: "肉桂和薄荷味", distractors: ["無味純水", "原味牛奶", "綠茶味"] },
+            { id: 384, cat: "電子煙危害", q: "電子煙中含有的毒藜鹼這一有害物質，有什麼用途？", ans: "殺蟲劑", distractors: ["食品防腐劑", "兒童止咳糖漿", "皮膚保濕劑"] },
+            { id: 385, cat: "電子煙危害", q: "關於電子煙的潛在影響，以下哪項是正確的？", ans: "使用過電子煙會增加從未嘗試吸煙的青少年以後吸食傳統捲煙的機率", distractors: ["從未吸煙的青少年使用電子煙後，會徹底失去對傳統捲煙的興趣", "電子煙可作為青少年的防煙疫苗，有效降低日後接觸煙草的風險", "青少年使用無味電子煙不會產生依賴，也不影響大腦發育與行為"] },
+            { id: 386, cat: "電子煙知識", q: "電子煙最早產於哪個國家？", ans: "中國", distractors: ["美國", "德國", "韓國"] },
+            { id: 387, cat: "澳門控煙", q: "澳門從何時起禁止銷售與宣傳電子煙，且在禁煙區禁止吸食電子煙？", ans: "2018年1月1日", distractors: ["2012年1月1日", "2022年12月1日", "2015年5月31日"] },
+            { id: 388, cat: "電子煙危害", q: "電子煙肺損傷（EVALI）患者的常見症狀有哪些？", ans: "咳嗽胸痛、腹痛腹瀉、發燒", distractors: ["視力增強、食慾大增、體溫偏低", "皮膚美白、關節靈活、精力充沛", "輕微打噴嚏、流清涕、無發熱"] },
+            { id: 389, cat: "電子煙危害", q: "以下哪種化學物質是電子煙的主要溶劑，會刺激皮膚及黏膜，造成接觸性皮炎、脫髮及肝腎損害？", ans: "丙二醇", distractors: ["蒸餾水", "氯化鈉", "橄欖油"] },
+            { id: 390, cat: "電子煙危害", q: "電子煙中使用尼古丁鹽而非一般的尼古丁，其帶來的影響包括？", ans: "尼古丁鹽能提高擊喉感、使電子煙含有更多尼古丁、吸收更快更易、成癮更快", distractors: ["完全消除了尼古丁的成癮性", "能幫助青少年快速戒除煙癮", "將尼古丁轉化為無害的食鹽"] },
+            { id: 391, cat: "電子煙危害", q: "電子煙的煙霧中存在數十種重金屬，哪兩種含量最多？", ans: "鎳和鉻", distractors: ["金和銀", "鈣和鎂", "鉀和鈉"] },
+            { id: 392, cat: "電子煙危害", q: "電子煙肺損傷患者即便痊癒，亦有可能留下諸多後遺症，包括哪些？", ans: "嚴重呼吸問題、輕度認知障礙、焦慮", distractors: ["肺活量大幅提升、記憶力增強、情緒平穩", "對呼吸道病毒產生終身免疫、體力倍增", "僅有數日輕微喉乾，不會留下任何長期影響"] },
+            { id: 393, cat: "電子煙危害", q: "電子煙煙油的各種「口味」主要是如何調製而成？", ans: "添加化學調味劑", distractors: ["鮮榨天然水果原汁", "純中草藥熬製萃取", "高山泉水自然發酵"] },
+            { id: 394, cat: "電子煙危害", q: "電子煙釋放尼古丁的速率，主要取決於哪兩項因素？", ans: "電子煙功率和煙油尼古丁含量", distractors: ["電子煙外殼顏色和機身重量", "室內燈光亮度和環境噪音大小", "使用者的身高體重與年齡性別"] },
+            { id: 395, cat: "加熱煙危害", q: "加熱煙是一種電池驅動裝置，用於加熱煙草，最高可達多少度？", ans: "350°C", distractors: ["50°C", "100°C", "1000°C"] },
+            { id: 396, cat: "電子煙危害", q: "「電子煙肺損傷」的英文縮寫是什麼？", ans: "EVALI", distractors: ["FCTC", "COPD", "SARS"] },
+            { id: 397, cat: "電子煙危害", q: "電子煙肺損傷（EVALI）在2019年首先在哪個國家爆發？", ans: "美國", distractors: ["英國", "日本", "澳洲"] },
+            { id: 398, cat: "電子煙數據", q: "世界衛生組織指出全球有多少青少年使用電子煙？", ans: "近1500萬", distractors: ["不足10萬", "100萬", "1億"] },
+            { id: 399, cat: "電子煙危害", q: "世界衛生組織將電子煙二手煙氣溶膠定義為什麼？", ans: "新的空氣污染源", distractors: ["無害的芳香水霧", "室內加濕淨化劑", "安全減害替代氣體"] },
+            { id: 400, cat: "電子煙知識", q: "世界衛生組織對電子煙作為戒煙工具的態度是什麼？", ans: "無證據表明有助戒煙，且越來越多證據表明危害", distractors: ["強烈推薦所有吸煙者改用電子煙", "電子煙是唯一合法的醫療戒煙器械", "青少年可使用電子煙預防吸煙"] },
+            { id: 401, cat: "電子煙數據", q: "在63個有資料的國家中，青少年吸電子煙的流行率平均是成年人的多少倍？", ans: "9倍", distractors: ["1.5倍", "3倍", "20倍"] },
+            { id: 402, cat: "電子煙危害", q: "兒童誤吞電子煙煙油可能導致什麼嚴重後果？", ans: "尼古丁中毒甚至致死", distractors: ["僅輕微腹脹無需就醫", "短暫口渴喝水即恢復", "產生輕微困意入睡"] },
+            { id: 403, cat: "電子煙數據", q: "美國2019年EVALI爆發期間通報了多少例住院病例？", ans: "近3000例", distractors: ["約150例", "約600例", "逾50000例"] },
+            { id: 404, cat: "電子煙危害", q: "電子煙「爆米花肺」的醫學名稱是什麼？", ans: "閉塞性細支氣管炎", distractors: ["急性肺炎", "肺結核", "支氣管哮喘"] },
+            { id: 405, cat: "電子煙危害", q: "電子煙中檢出的亞硝胺被世界衛生組織列為哪類致癌物？", ans: "1類", distractors: ["2B類", "3類", "非致癌物"] },
+            { id: 406, cat: "電子煙危害", q: "電子煙氣溶膠中重金屬的含量與傳統捲煙相比如何？", ans: "遠高於", distractors: ["完全為零", "遠低於", "僅為十分之一"] },
+            { id: 407, cat: "電子煙危害", q: "電子煙產生的二手煙中，PM2.5的含量比空氣中本底含量高出多少倍？", ans: "6至86倍", distractors: ["1倍", "0.2倍", "2倍"] },
+            { id: 408, cat: "電子煙政策", q: "世界衛生組織建議對電子煙採取的監管力度應如何？", ans: "至少與傳統煙草一樣嚴格", distractors: ["比傳統煙草寬鬆以作替代", "完全交由行業自律免予監管", "僅限制廣告但放寬公共場所使用"] },
+            { id: 409, cat: "電子煙危害", q: "電子煙設備可能因什麼原因引發爆炸或起火？", ans: "鋰電池故障", distractors: ["煙油水分過多", "機身外殼受潮", "吸嘴塑膠老化"] },
+            { id: 410, cat: "電子煙危害", q: "電子煙設備老化後可能產生什麼變化？", ans: "顆粒物排放增加", distractors: ["霧化效果完全無害", "重金屬釋放量歸零", "尼古丁自動分解"] },
+            { id: 411, cat: "電子煙危害", q: "電子煙煙液加熱後產生的氣溶膠中，甲醛含量比空氣中本底含量高出約多少？", ans: "20倍", distractors: ["2倍", "5倍", "100倍"] },
+            { id: 412, cat: "電子煙危害", q: "電子煙煙彈中的尼古丁含量大約相當於多少支傳統捲煙？", ans: "至少20支", distractors: ["1支", "0.5支", "5支"] },
+            { id: 413, cat: "電子煙危害", q: "電子煙煙霧對人體細胞的主要影響是什麼？", ans: "導致DNA損傷和細胞死亡", distractors: ["促進細胞修復和延長壽命", "增強細胞膜抗氧化防禦力", "對人體細胞完全沒有作用"] },
+            { id: 414, cat: "電子煙危害", q: "電子煙對青少年大腦發育的長期負面影響之一是什麼？", ans: "引發學習障礙與焦慮", distractors: ["提升記憶力與專注度", "加快語言與邏輯發展", "穩定情緒並改善睡眠"] },
+            { id: 415, cat: "加熱煙危害", q: "關於「加熱不燃燒煙草製品」，以下說法哪項正確？", ans: "產生的氣溶膠中仍含有尼古丁和多種有毒物，危害低於傳統捲煙", distractors: ["因不經明火燃燒所以完全不含尼古丁與致癌物，對人體絕對安全", "已獲世界衛生組織認證為最安全戒煙工具，適合青少年日常使用", "釋放的二手氣溶膠只含純淨水蒸氣，可在室內公共場所自由吸食"] },
+            { id: 416, cat: "電子煙危害", q: "關於電子煙導致的電子煙肺損傷，其主要原因被認為是煙油中的何種添加劑？", ans: "醋酸維他命E", distractors: ["維他命C", "純淨水", "氯化鈉"] },
+            { id: 417, cat: "防毒知識", q: "「太空油」名稱的由來與什麼有關？", ans: "吸入後有輕飄飄失重的感覺", distractors: ["外包裝印有太空人圖案", "專供航天員使用的保健品", "在太空站研發的燃料"] },
+            { id: 418, cat: "防毒知識", q: "「太空油」吸食方式隱蔽性強的原因是什麼？", ans: "可通過電子煙在公眾場所輕易使用", distractors: ["必須在醫院手術室才能使用", "體積龐大且氣味極度刺鼻", "只能通過靜脈注射使用"] },
+            { id: 419, cat: "防毒知識", q: "「太空油」（依託咪酯）的成癮性如何？", ans: "成癮性極高", distractors: ["完全不會成癮", "成癮性極低", "僅有輕微心理習慣"] },
+            { id: 420, cat: "防毒知識", q: "「太空油」的濫用人群呈現什麼趨勢？", ans: "年輕化趨勢", distractors: ["高齡化趨勢", "已完全絕跡趨勢", "僅限專業醫護趨勢"] },
+            { id: 421, cat: "防毒知識", q: "女性濫用依託咪酯可能面臨哪種特殊健康風險？", ans: "月經紊亂和生育能力受影響", distractors: ["皮膚變得白皙有光澤", "視力與聽力大幅增強", "骨質密度顯著提高"] },
+            { id: 422, cat: "防毒知識", q: "吸食「太空油」後，吸食者可能出現哪種運動方面的症狀？", ans: "肌肉不自主抽搐", distractors: ["運動協調能力大幅提升", "跑步速度變快", "肌肉力量永久增強"] },
+            { id: 423, cat: "防毒知識", q: "吸食「太空油」後，吸食者皮膚可能出現什麼變化？", ans: "變得灰黑", distractors: ["變得紅潤健康", "出現金色光澤", "完全沒有變化"] },
+            { id: 424, cat: "防毒知識", q: "依託咪酯在醫學上原本的用途是什麼？", ans: "麻醉", distractors: ["感冒退燒藥", "維他命營養補充劑", "止咳化痰藥"] },
+            { id: 425, cat: "防毒知識", q: "依託咪酯被濫用時，最常見的給藥途徑是什麼？", ans: "霧化吸入", distractors: ["口服膠囊吞服", "外敷貼於皮膚", "滴入眼睛"] },
+            { id: 426, cat: "防毒知識", q: "依託咪酯濫用者可能出現哪種精神症狀？", ans: "幻覺、恐懼和焦慮", distractors: ["情緒永遠保持平靜快樂", "專注力與邏輯思維大幅提升", "記憶力恢復到童年時期"] },
+            { id: 427, cat: "防毒知識", q: "依託咪酯濫用者尿檢中常發現被混入的其他毒品包括什麼？", ans: "冰毒和氯胺酮", distractors: ["葡萄糖和維他命", "阿司匹林和撲熱息痛", "咖啡因和牛磺酸"] },
+            { id: 428, cat: "防毒知識", q: "長期濫用依託咪酯可能對大腦造成什麼影響？", ans: "不可逆的腦部損傷和精神障礙", distractors: ["促進大腦神經元再生", "預防阿爾茨海默病", "改善失眠並提高睡眠質量"] },
+            { id: 429, cat: "防毒法律", q: "香港將依託咪酯列為毒品後，販運該毒品的最高刑罰是什麼？", ans: "終身監禁及罰款500萬元", distractors: ["罰款1500元", "監禁3個月", "社會服務令"] },
+            { id: 430, cat: "防毒知識", q: "部分「太空油」中可能被混入以下哪種毒品？", ans: "氯胺酮(K仔)", distractors: ["維生素C片", "葡萄糖粉", "薄荷腦"] }
+        ];
+
+        console.assert(MASTER_QUESTION_BANK.length === 430, `總題庫目前為 ${MASTER_QUESTION_BANK.length} 題`);
+
+        /**
+         * ============================================================================
+         * Web Audio API 競技音效合成器（開箱、三組專屬搶答蜂鳴、答對叮咚、答錯低音、頒獎號角）
+         * ============================================================================
+         */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('btn-sound').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        /**
+         * ============================================================================
+         * 階段二廣東話自動讀題模組（Web Speech API - zh-HK 嚴格鎖定單一語音角色）
+         * ============================================================================
+         */
+        let ttsEnabled = true;
+        let ttsTimerHandle = null;
+        let selectedVoiceURI = '';
+        let cachedCantoneseVoice = null;
+
+        function getCantoneseVoices() {
+            if (!('speechSynthesis' in window)) return [];
+            const voices = window.speechSynthesis.getVoices() || [];
+            return voices.filter(v =>
+                /zh[-_]?hk/i.test(v.lang) ||
+                /yue/i.test(v.lang) ||
+                /cantonese|hiugaai|hiumaan|wanlung|sinji|tracy|danny|廣東|粵語|香港/i.test(v.name)
+            );
+        }
+
+        function formatVoiceLabel(v) {
+            const name = v.name || '未知語音';
+            const sourceTag = v.localService ? '本機穩定' : '線上自然';
+            let genderHint = '';
+            if (/hiugaai|hiumaan|tracy|sinji|female|女/i.test(name)) genderHint = '👩 ';
+            else if (/wanlung|danny|male|男/i.test(name)) genderHint = '👨 ';
+            return `${genderHint}${name} [${sourceTag}]`;
+        }
+
+        function populateVoiceDropdown() {
+            const selectEl = document.getElementById('setup-buzzer-voice');
+            if (!selectEl) return;
+
+            const cantoneseVoices = getCantoneseVoices();
+            const prevSelected = selectedVoiceURI || selectEl.value;
+
+            selectEl.innerHTML = '';
+
+            if (cantoneseVoices.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '系統預設廣東話 (zh-HK)';
+                selectEl.appendChild(opt);
+                cachedCantoneseVoice = null;
+                return;
+            }
+
+            // 將本機穩定語音與常用自然語音排序呈現，讓主持人自由鎖定
+            const sortedVoices = [...cantoneseVoices].sort((a, b) => {
+                // 若有 HiuGaai / HiuMaan / Tracy 等常見女聲優先排前，避免隨機順序跳動
+                const score = (v) => {
+                    if (/hiugaai/i.test(v.name)) return 1;
+                    if (/hiumaan/i.test(v.name)) return 2;
+                    if (/tracy/i.test(v.name)) return 3;
+                    if (/sinji/i.test(v.name)) return 4;
+                    if (/wanlung/i.test(v.name)) return 5;
+                    if (/danny/i.test(v.name)) return 6;
+                    return v.localService ? 7 : 8;
+                };
+                return score(a) - score(b);
+            });
+
+            sortedVoices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.voiceURI;
+                opt.textContent = formatVoiceLabel(v);
+                selectEl.appendChild(opt);
+            });
+
+            // 若先前已手動選擇且該語音仍在清單中，嚴格保留原選擇不變聲
+            if (prevSelected && sortedVoices.some(v => v.voiceURI === prevSelected)) {
+                selectEl.value = prevSelected;
+                selectedVoiceURI = prevSelected;
+            } else {
+                selectEl.value = sortedVoices[0].voiceURI;
+                selectedVoiceURI = sortedVoices[0].voiceURI;
+            }
+
+            cachedCantoneseVoice = sortedVoices.find(v => v.voiceURI === selectedVoiceURI) || sortedVoices[0];
+        }
+
+        function onSetupVoiceChange() {
+            const selectEl = document.getElementById('setup-buzzer-voice');
+            if (!selectEl) return;
+            selectedVoiceURI = selectEl.value;
+            cachedCantoneseVoice = resolveLockedCantoneseVoice();
+        }
+
+        // 嚴格取得已鎖定的廣東話語音物件，避免中途換聲
+        function resolveLockedCantoneseVoice() {
+            if (!('speechSynthesis' in window)) return null;
+            const voices = window.speechSynthesis.getVoices() || [];
+            if (selectedVoiceURI) {
+                const exact = voices.find(v => v.voiceURI === selectedVoiceURI);
+                if (exact) {
+                    cachedCantoneseVoice = exact;
+                    return exact;
+                }
+            }
+            if (cachedCantoneseVoice) return cachedCantoneseVoice;
+
+            const cantoneseVoices = getCantoneseVoices();
+            if (cantoneseVoices.length > 0) {
+                cachedCantoneseVoice = cantoneseVoices[0];
+                selectedVoiceURI = cachedCantoneseVoice.voiceURI;
+                return cachedCantoneseVoice;
+            }
+            return null;
+        }
+
+        // 賽前試聽所選語音角色
+        function previewSelectedVoice() {
+            stopSpeaking();
+            if (!('speechSynthesis' in window)) return;
+            onSetupVoiceChange();
+            const voice = resolveLockedCantoneseVoice();
+            const utter = new SpeechSynthesisUtterance('各位參賽同學請準備，第14屆控煙與健康校際問答比賽，極速搶答賽現在開始。');
+            utter.lang = 'zh-HK';
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            if (voice) {
+                utter.voice = voice;
+            }
+            window.speechSynthesis.speak(utter);
+        }
+
+        if ('speechSynthesis' in window) {
+            populateVoiceDropdown();
+            window.speechSynthesis.onvoiceschanged = populateVoiceDropdown;
+        }
+
+        // 立即中止唸題（選定搶答組別、跳題、切換階段或離開頁面時呼叫）
+        function stopSpeaking() {
+            if (ttsTimerHandle) {
+                clearTimeout(ttsTimerHandle);
+                ttsTimerHandle = null;
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        // 建立階段二題目與 A/B/C/D 四個選項的朗讀分段陣列
+        function buildBuzzerSpeechSegments(qObj) {
+            if (!qObj) return [];
+            const segments = [qObj.q];
+            const letters = ['A', 'B', 'C', 'D'];
+            if (Array.isArray(qObj.shuffledOptions)) {
+                qObj.shuffledOptions.forEach((opt, idx) => {
+                    if (opt && opt.text) {
+                        segments.push(`${letters[idx]}，${opt.text}`);
+                    }
+                });
+            }
+            return segments;
+        }
+
+        // 以鎖定的單一廣東話語音依序朗讀題目及四個選項（支援階段一與階段二，作答/搶答即停）
+        function speakCantoneseQuestion(qObj, forceReplay = false) {
+            stopSpeaking();
+            if (!qObj || !('speechSynthesis' in window)) return;
+            if (!forceReplay && !ttsEnabled) return;
+
+            const segments = buildBuzzerSpeechSegments(qObj);
+            if (segments.length === 0) return;
+
+            ttsTimerHandle = setTimeout(() => {
+                // 若在極短緩衝期間已作答/搶答鎖定或已離開答題階段，立即放棄朗讀
+                if (!forceReplay) {
+                    const isValidDeal = (tournament.currentStage === 'DEAL_QUIZ' && !tournament.dealAnsweringLock);
+                    const isValidBuzzer = (tournament.currentStage === 'BUZZER' && tournament.bzPhase === 'OPEN');
+                    if (!isValidDeal && !isValidBuzzer) return;
+                }
+
+                const voice = resolveLockedCantoneseVoice();
+                segments.forEach(text => {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = voice ? voice.lang : 'zh-HK';
+                    utter.rate = 1.0;
+                    utter.pitch = 1.0;
+                    if (voice) {
+                        utter.voice = voice;
+                    }
+                    window.speechSynthesis.speak(utter);
+                });
+            }, 60);
+        }
+
+        // 手動重讀階段一目前題目（含四個選項）
+        function speakCurrentDealQuestion() {
+            if (tournament.currentStage !== 'DEAL_QUIZ') return;
+            const qObj = tournament.activeChestQuestions[tournament.activeChestQIndex];
+            if (!qObj) return;
+            speakCantoneseQuestion(qObj, true);
+        }
+
+        // 手動重讀階段二目前搶答題（含四個選項）
+        function speakCurrentBuzzerQuestion() {
+            if (tournament.currentStage !== 'BUZZER') return;
+            const qObj = tournament.buzzerPool[tournament.bzIndex];
+            if (!qObj) return;
+            speakCantoneseQuestion(qObj, true);
+        }
+
+        // 切換廣東話自動讀題開關（階段一、階段二同步）
+        function toggleBuzzerTTS() {
+            ttsEnabled = !ttsEnabled;
+            if (!ttsEnabled) stopSpeaking();
+            updateBuzzerTTSButtonUI();
+        }
+
+        function updateBuzzerTTSButtonUI() {
+            const btnBz = document.getElementById('btn-bz-tts-toggle');
+            if (btnBz) {
+                if (ttsEnabled) {
+                    btnBz.textContent = '🗣️ 廣東話讀題：開';
+                    btnBz.className = 'px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 text-xs sm:text-sm font-bold transition';
+                } else {
+                    btnBz.textContent = '🔇 廣東話讀題：關';
+                    btnBz.className = 'px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 text-xs sm:text-sm font-bold transition';
+                }
+            }
+            const btnDq = document.getElementById('btn-dq-tts-toggle');
+            if (btnDq) {
+                if (ttsEnabled) {
+                    btnDq.textContent = '🗣️ 廣東話讀題：開';
+                    btnDq.className = 'px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 text-xs font-bold transition';
+                } else {
+                    btnDq.textContent = '🔇 廣東話讀題：關';
+                    btnDq.className = 'px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 text-xs font-bold transition';
+                }
+            }
+        }
+
+        window.addEventListener('beforeunload', stopSpeaking);
+
+        function playSound(type, teamIdx = 0) {
+            if (!soundEnabled) return;
+            try {
+                ensureAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'open') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(280, now);
+                    osc.frequency.exponentialRampToValueAtTime(680, now + 0.32);
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.36);
+                } else if (type === 'buzz') {
+                    const freqs = [523.25, 659.25, 783.99];
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(freqs[teamIdx] || 600, now);
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(659.25, now);
+                    osc.frequency.setValueAtTime(987.77, now + 0.1);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(175, now);
+                    osc.frequency.linearRampToValueAtTime(115, now + 0.35);
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'tick') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+                    osc.start(now);
+                    osc.stop(now + 0.07);
+                } else if (type === 'fanfare') {
+                    const chord = [523.25, 659.25, 783.99, 1046.50];
+                    chord.forEach((f, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.type = 'triangle';
+                        o.frequency.setValueAtTime(f, now + idx * 0.09);
+                        g.gain.setValueAtTime(0.2, now + idx * 0.09);
+                        g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.09 + 0.55);
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.start(now + idx * 0.09);
+                        o.stop(now + idx * 0.09 + 0.58);
+                    });
+                }
+            } catch (e) {
+                console.warn("Audio skipped:", e);
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 全局比賽狀態機（無縫銜接階段一 120題 + 階段二 50題 = 170題零重複）
+         * ============================================================================
+         */
+        function shuffle(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        let tournament = {
+            currentStage: 'SETUP', // 'SETUP' | 'DEAL_LOBBY' | 'DEAL_QUIZ' | 'DEAL_SUMMARY' | 'BUZZER' | 'PODIUM'
+            teams: [
+                { id: 0, name: "第一組", score: 0, dealScore: 0, buzzerScore: 0, dealAttempts: 0, dealRight: 0, bzRight: 0, bzWrong: 0, color: "rose" },
+                { id: 1, name: "第二組", score: 0, dealScore: 0, buzzerScore: 0, dealAttempts: 0, dealRight: 0, bzRight: 0, bzWrong: 0, color: "amber" },
+                { id: 2, name: "第三組", score: 0, dealScore: 0, buzzerScore: 0, dealAttempts: 0, dealRight: 0, bzRight: 0, bzWrong: 0, color: "emerald" }
+            ],
+
+            // 全局不重複題池分割：前 120 題分配給階段一（6箱 × 20題），第 121~170 題（共50題）分配給階段二
+            dealPool: [],       // 長度 120
+            dealCursor: 0,
+            buzzerPool: [],     // 長度 50（絕對不與 dealPool 重複）
+
+            // 階段一（一擲千金）狀態
+            chests: [],         // 10 個寶箱狀態
+            dealSchedule: [0, 1, 2, 0, 1, 2], // 預設輪次順序：第1組->第2組->第3組->第1組->第2組->第3組
+            dealRoundIndex: 0,  // 0 ~ 5
+            dealActiveTeam: 0,  // 當前挑戰隊伍 ID
+            activeChestId: null,
+            activeChestQuestions: [],
+            activeChestQIndex: 0,
+            activeChestScore: 0,
+            activeChestCorrect: 0,
+            dealAnsweringLock: false,
+
+            // 階段二（極速搶答賽）狀態
+            bzIndex: 0,         // 0 ~ 49
+            bzPhase: 'OPEN',    // 'OPEN' | 'LOCKED' | 'DONE'
+            bzLockedTeam: null,
+            bzShowChoices: false,
+            bzTimerLimit: 15,
+            bzTimerLeft: 15,
+            bzTimerHandle: null,
+
+            // 全局操作快照棧（支援撤銷）
+            undoStack: []
+        };
+
+        /**
+         * ============================================================================
+         * 啟動總決賽：洗牌 250 題並切分出 120 題（階段一）+ 50 題（階段二）
+         * ============================================================================
+         */
+        function startFullCompetition() {
+            ensureAudio();
+
+            // 讀取 3 隊名稱
+            for (let i = 0; i < 3; i++) {
+                const inputVal = document.getElementById(`setup-name-${i}`).value.trim();
+                tournament.teams[i].name = inputVal || `第${i + 1}組`;
+                tournament.teams[i].score = 0;
+                tournament.teams[i].dealScore = 0;
+                tournament.teams[i].buzzerScore = 0;
+                tournament.teams[i].dealAttempts = 0;
+                tournament.teams[i].dealRight = 0;
+                tournament.teams[i].bzRight = 0;
+                tournament.teams[i].bzWrong = 0;
+            }
+
+            // 讀取階段二設置
+            tournament.bzShowChoices = (document.getElementById('setup-buzzer-mode').value === 'choice');
+            tournament.bzTimerLimit = parseInt(document.getElementById('setup-buzzer-timer').value, 10);
+            ttsEnabled = (document.getElementById('setup-buzzer-tts').value === 'on');
+            onSetupVoiceChange();
+            updateBuzzerTTSButtonUI();
+            stopSpeaking();
+
+            // 將全部 430 題徹底洗牌，嚴格切分為階段一 380 題（19箱 × 20題）與階段二 50 題，100% 互斥無重複
+            const shuffledMaster = shuffle(MASTER_QUESTION_BANK).map(q => {
+                const allOpts = [
+                    { text: q.ans, isCorrect: true },
+                    ...q.distractors.map(d => ({ text: d, isCorrect: false }))
+                ];
+                return {
+                    ...q,
+                    shuffledOptions: shuffle(allOpts)
+                };
+            });
+
+            tournament.dealPool = shuffledMaster.slice(0, 380);
+            tournament.dealCursor = 0;
+            tournament.buzzerPool = shuffledMaster.slice(380, 430);
+
+            // 初始化 19 個寶箱，並為每個寶箱預先綁定專屬且互不重複的 20 題切片
+            tournament.chests = Array.from({ length: 19 }, (_, i) => ({
+                id: i + 1,
+                opened: false,
+                openedByTeam: null,
+                attemptNum: 0,
+                score: 0,
+                correct: 0,
+                questions: tournament.dealPool.slice(i * 20, (i + 1) * 20)
+            }));
+
+            tournament.dealRoundIndex = 0;
+            tournament.dealActiveTeam = tournament.dealSchedule[0];
+            tournament.undoStack = [];
+
+            updateGlobalScoreboard();
+            enterDealLobby();
+        }
+
+        function resetEntireTournament() {
+            stopBuzzerTimer();
+            stopSpeaking();
+            switchView('view-setup');
+            document.getElementById('global-stage-badge').textContent = '賽前準備';
+        }
+
+        function switchView(viewId) {
+            ['view-setup', 'view-deal-lobby', 'view-deal-quiz', 'view-deal-summary', 'view-buzzer-arena', 'view-podium'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 更新頂部常駐三組記分板
+        function updateGlobalScoreboard() {
+            tournament.teams.forEach((t, idx) => {
+                document.getElementById(`top-team-name-${idx}`).textContent = t.name;
+                document.getElementById(`top-team-score-${idx}`).textContent = `${t.score} 分`;
+
+                // 同步更新階段一切換按鈕名稱
+                const swBtn = document.getElementById(`deal-switch-${idx}`);
+                if (swBtn) swBtn.textContent = t.name;
+            });
+            document.getElementById('btn-global-undo').disabled = (tournament.undoStack.length === 0);
+        }
+
+        // 點擊頂部隊名即時修改隊伍名稱
+        function promptRenameTeam(teamIdx) {
+            const span = document.getElementById(`top-team-name-${teamIdx}`);
+            const oldName = tournament.teams[teamIdx].name;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = oldName;
+            input.maxLength = 16;
+            input.className = 'px-1.5 py-0.5 rounded bg-slate-900 border border-yellow-400 text-white text-xs font-bold w-24 focus:outline-none';
+            span.replaceWith(input);
+            input.focus();
+            input.select();
+
+            const save = () => {
+                const newName = input.value.trim() || oldName;
+                tournament.teams[teamIdx].name = newName;
+                const newSpan = document.createElement('span');
+                newSpan.id = `top-team-name-${teamIdx}`;
+                newSpan.onclick = () => promptRenameTeam(teamIdx);
+                newSpan.title = '點擊修改隊名';
+                newSpan.className = span.className;
+                newSpan.textContent = newName;
+                input.replaceWith(newSpan);
+
+                updateGlobalScoreboard();
+                if (tournament.currentStage === 'DEAL_LOBBY') renderDealLobby();
+                if (tournament.currentStage === 'BUZZER') updateBuzzerTeamsUI();
+            };
+
+            input.onblur = save;
+            input.onkeydown = (e) => { if (e.key === 'Enter') save(); };
+        }
+
+        function saveUndoState() {
+            tournament.undoStack.push(JSON.parse(JSON.stringify({
+                teams: tournament.teams,
+                chests: tournament.chests,
+                dealRoundIndex: tournament.dealRoundIndex,
+                dealActiveTeam: tournament.dealActiveTeam,
+                bzIndex: tournament.bzIndex
+            })));
+            document.getElementById('btn-global-undo').disabled = false;
+        }
+
+        function undoLastAction() {
+            if (tournament.undoStack.length === 0) return;
+            stopSpeaking();
+            const prev = tournament.undoStack.pop();
+            tournament.teams = prev.teams;
+            tournament.chests = prev.chests;
+            tournament.dealRoundIndex = prev.dealRoundIndex;
+            tournament.dealActiveTeam = prev.dealActiveTeam;
+            tournament.bzIndex = prev.bzIndex;
+
+            updateGlobalScoreboard();
+            if (tournament.currentStage === 'BUZZER') {
+                loadBuzzerQuestion(tournament.bzIndex);
+            } else if (tournament.currentStage === 'DEAL_LOBBY') {
+                renderDealLobby();
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 階段一：一擲千金（3組輪流選箱各2次，共6箱 × 20題，答對+10 / 答錯0分）
+         * ============================================================================
+         */
+        function enterDealLobby() {
+            stopSpeaking();
+            tournament.currentStage = 'DEAL_LOBBY';
+            document.getElementById('global-stage-badge').textContent = '階段一：一擲千金';
+            document.getElementById('global-stage-badge').className = 'px-2.5 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-xs font-black';
+
+            // 若19個寶箱已全數開啟，進入階段一總結算
+            if (tournament.dealRoundIndex >= 19) {
+                showStageOneCompleteSummary();
+                return;
+            }
+
+            // 按第1組 -> 第2組 -> 第3組輪流指派下一位隊伍（主持人可隨時手動改選）
+            tournament.dealActiveTeam = tournament.dealRoundIndex % 3;
+
+            renderDealLobby();
+            switchView('view-deal-lobby');
+        }
+
+        function setDealActiveTeam(teamIdx) {
+            tournament.dealActiveTeam = teamIdx;
+            renderDealLobby();
+        }
+
+        function renderDealLobby() {
+            const activeTeam = tournament.teams[tournament.dealActiveTeam];
+            const teamColors = ['text-rose-400', 'text-amber-400', 'text-emerald-400'];
+            const btnActiveClasses = [
+                'px-3 py-1.5 rounded-xl text-xs font-black transition bg-rose-600 text-white shadow',
+                'px-3 py-1.5 rounded-xl text-xs font-black transition bg-amber-500 text-slate-950 shadow',
+                'px-3 py-1.5 rounded-xl text-xs font-black transition bg-emerald-600 text-white shadow'
+            ];
+
+            document.getElementById('deal-round-num').textContent = tournament.dealRoundIndex;
+            const labelEl = document.getElementById('deal-active-team-label');
+            labelEl.textContent = activeTeam.name;
+            labelEl.className = `${teamColors[activeTeam.id]} underline decoration-yellow-500/50`;
+            document.getElementById('deal-team-attempt').textContent = activeTeam.dealAttempts + 1;
+
+            // 更新隊伍切換按鈕樣式
+            for (let i = 0; i < 3; i++) {
+                const btn = document.getElementById(`deal-switch-${i}`);
+                btn.textContent = `${tournament.teams[i].name} (已開 ${tournament.teams[i].dealAttempts} 箱)`;
+                btn.className = (i === tournament.dealActiveTeam)
+                    ? btnActiveClasses[i]
+                    : 'px-3 py-1.5 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-700 text-slate-300';
+            }
+
+            // 渲染三組階段一開箱統計軌跡
+            const strip = document.getElementById('deal-schedule-strip');
+            strip.innerHTML = '';
+            const stripBorders = ['border-rose-500/40 bg-rose-950/30', 'border-amber-500/40 bg-amber-950/30', 'border-emerald-500/40 bg-emerald-950/30'];
+
+            tournament.teams.forEach((t, idx) => {
+                const teamBoxes = tournament.chests.filter(c => c.opened && c.openedByTeam === idx).map(c => `#${c.id}`).join('、');
+                const pill = document.createElement('div');
+                pill.className = `p-2.5 rounded-xl border ${idx === tournament.dealActiveTeam ? 'border-yellow-400 bg-yellow-500/15' : stripBorders[idx]} flex items-center justify-between gap-2`;
+                pill.innerHTML = `
+                    <div class="text-left min-w-0">
+                        <div class="text-xs font-black ${teamColors[idx]} truncate">${t.name}</div>
+                        <div class="text-[11px] text-slate-400 truncate">${teamBoxes ? `已開：${teamBoxes}` : '尚未開啟寶箱'}</div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-xs font-black text-emerald-400">${t.dealScore} 分</div>
+                        <div class="text-[10px] text-slate-400">共 ${t.dealAttempts} 箱</div>
+                    </div>
+                `;
+                strip.appendChild(pill);
+            });
+
+            // 渲染 10 個寶箱
+            const grid = document.getElementById('deal-chests-grid');
+            grid.innerHTML = '';
+            const teamBadgeColors = ['bg-rose-600 text-white', 'bg-amber-500 text-slate-950', 'bg-emerald-600 text-white'];
+
+            tournament.chests.forEach(chest => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.disabled = chest.opened;
+
+                btn.className = chest.opened
+                    ? 'chest-tile rounded-2xl p-4 border-2 border-slate-700/80 opacity-75 flex flex-col items-center justify-between text-center min-h-[175px] cursor-default'
+                    : 'chest-tile rounded-2xl p-4 border-2 border-yellow-500/45 flex flex-col items-center justify-between text-center min-h-[175px] cursor-pointer shadow-lg';
+
+                const svgHtml = chest.opened
+                    ? `<svg class="w-16 h-16 text-slate-500 my-1" viewBox="0 0 64 64" fill="none">
+                         <path d="M8 26L14 14H50L56 26H8Z" fill="#334155" stroke="#64748B" stroke-width="2"/>
+                         <rect x="8" y="26" width="48" height="28" rx="4" fill="#1E293B" stroke="#64748B" stroke-width="2"/>
+                         <path d="M24 38L30 44L42 32" stroke="#34D399" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                       </svg>`
+                    : `<svg class="w-16 h-16 my-1 chest-pulse" viewBox="0 0 64 64" fill="none">
+                         <path d="M8 28C8 19.1634 15.1634 12 24 12H40C48.8366 12 56 19.1634 56 28V31H8V28Z" fill="url(#cgTop)" stroke="#FDE047" stroke-width="2.5"/>
+                         <rect x="8" y="31" width="48" height="23" rx="4" fill="url(#cgBot)" stroke="#FDE047" stroke-width="2.5"/>
+                         <rect x="16" y="12" width="5" height="42" fill="#FACC15" fill-opacity="0.7"/>
+                         <rect x="43" y="12" width="5" height="42" fill="#FACC15" fill-opacity="0.7"/>
+                         <rect x="27" y="26" width="10" height="12" rx="2" fill="#FEF08A" stroke="#B45309" stroke-width="2"/>
+                         <defs>
+                           <linearGradient id="cgTop" x1="8" y1="12" x2="56" y2="31" gradientUnits="userSpaceOnUse">
+                             <stop stop-color="#EAB308"/><stop offset="1" stop-color="#854D0E"/>
+                           </linearGradient>
+                           <linearGradient id="cgBot" x1="8" y1="31" x2="56" y2="54" gradientUnits="userSpaceOnUse">
+                             <stop stop-color="#CA8A04"/><stop offset="1" stop-color="#422006"/>
+                           </linearGradient>
+                         </defs>
+                       </svg>`;
+
+                btn.innerHTML = `
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black ${chest.opened ? 'bg-slate-800 text-slate-400' : 'bg-yellow-500/20 text-yellow-300'}">
+                        ${chest.id} 號寶箱
+                    </span>
+                    ${svgHtml}
+                    <div class="w-full">
+                        ${chest.opened
+                            ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-black ${teamBadgeColors[chest.openedByTeam]} mb-0.5">
+                                 ${tournament.teams[chest.openedByTeam].name} 已開啟
+                               </span>
+                               <div class="text-xs font-black text-emerald-400">+${chest.score} 分 (${chest.correct}/20)</div>`
+                            : `<div class="text-xs font-bold text-amber-200">點擊開啟挑戰</div>
+                               <div class="text-[11px] text-slate-400">20條選擇題</div>`
+                        }
+                    </div>
+                `;
+
+                if (!chest.opened) {
+                    btn.onclick = () => startChestChallenge(chest.id);
+                }
+
+                grid.appendChild(btn);
+            });
+        }
+
+        // 開啟指定寶箱，載入該寶箱專屬且不重複的 20 題
+        function startChestChallenge(chestId) {
+            const chest = tournament.chests.find(c => c.id === chestId);
+            if (!chest || chest.opened) return;
+
+            playSound('open');
+            tournament.currentStage = 'DEAL_QUIZ';
+            tournament.activeChestId = chestId;
+            tournament.activeChestQuestions = chest.questions;
+
+            tournament.activeChestQIndex = 0;
+            tournament.activeChestScore = 0;
+            tournament.activeChestCorrect = 0;
+
+            const team = tournament.teams[tournament.dealActiveTeam];
+            const teamBg = ['bg-rose-600 text-white', 'bg-amber-500 text-slate-950', 'bg-emerald-600 text-white'];
+
+            const badge = document.getElementById('dq-team-badge');
+            badge.textContent = team.name;
+            badge.className = `px-3 py-1 rounded-lg font-black text-xs sm:text-sm ${teamBg[team.id]}`;
+
+            document.getElementById('dq-chest-badge').textContent = `第 ${chestId} 號寶箱（第 ${team.dealAttempts + 1} 次挑戰）`;
+
+            renderDealQuestion();
+            switchView('view-deal-quiz');
+        }
+
+        function renderDealQuestion() {
+            stopSpeaking();
+            tournament.dealAnsweringLock = false;
+            const idx = tournament.activeChestQIndex;
+            const qObj = tournament.activeChestQuestions[idx];
+
+            document.getElementById('dq-q-progress').textContent = idx + 1;
+            document.getElementById('dq-chest-points').textContent = `${tournament.activeChestScore} 分`;
+            document.getElementById('dq-progress-bar').style.width = `${((idx + 1) / 20) * 100}%`;
+
+            document.getElementById('dq-orig-id').textContent = `原題庫 #${qObj.id}`;
+            document.getElementById('dq-category').textContent = `📚 ${qObj.cat}`;
+            document.getElementById('dq-question-text').textContent = `${idx + 1}. ${qObj.q}`;
+
+            document.getElementById('dq-feedback-panel').classList.add('hidden');
+
+            const list = document.getElementById('dq-options-list');
+            list.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+
+            qObj.shuffledOptions.forEach((opt, optIdx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'choice-btn w-full text-left p-4 rounded-2xl bg-slate-800/85 border-2 border-slate-700 text-slate-100 flex items-center gap-3.5 group';
+                btn.innerHTML = `
+                    <span class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-600 group-hover:border-yellow-400 group-hover:text-yellow-400 flex items-center justify-center font-black text-sm shrink-0">
+                        ${letters[optIdx]}
+                    </span>
+                    <span class="text-base sm:text-lg font-medium leading-snug">${opt.text}</span>
+                `;
+                btn.onclick = () => submitDealAnswer(optIdx);
+                list.appendChild(btn);
+            });
+
+            // 階段一載入題目後自動以廣東話讀題及四個選項
+            if (ttsEnabled) {
+                speakCantoneseQuestion(qObj, false);
+            }
+        }
+
+        function submitDealAnswer(chosenIdx) {
+            if (tournament.dealAnsweringLock) return;
+            stopSpeaking(); // 階段一選擇答案後立即中止唸題
+            tournament.dealAnsweringLock = true;
+
+            const qObj = tournament.activeChestQuestions[tournament.activeChestQIndex];
+            const isCorrect = qObj.shuffledOptions[chosenIdx].isCorrect;
+            const buttons = document.getElementById('dq-options-list').querySelectorAll('button');
+            const letters = ['A', 'B', 'C', 'D'];
+
+            let rightText = '';
+            let rightLetter = '';
+
+            buttons.forEach((btn, i) => {
+                btn.disabled = true;
+                const opt = qObj.shuffledOptions[i];
+                if (opt.isCorrect) {
+                    rightText = opt.text;
+                    rightLetter = letters[i];
+                    btn.className = 'w-full text-left p-4 rounded-2xl bg-emerald-950/90 border-2 border-emerald-400 text-emerald-100 flex items-center gap-3.5 shadow-lg';
+                    btn.querySelector('span:first-child').className = 'w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0';
+                } else if (i === chosenIdx && !isCorrect) {
+                    btn.className = 'w-full text-left p-4 rounded-2xl bg-rose-950/80 border-2 border-rose-500 text-rose-200 flex items-center gap-3.5';
+                    btn.querySelector('span:first-child').className = 'w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center font-black text-sm shrink-0';
+                } else {
+                    btn.className = 'w-full text-left p-4 rounded-2xl bg-slate-900/50 border-2 border-slate-800 text-slate-500 flex items-center gap-3.5 opacity-55';
+                }
+            });
+
+            const fbPanel = document.getElementById('dq-feedback-panel');
+            const fbIcon = document.getElementById('dq-fb-icon');
+            const fbTitle = document.getElementById('dq-fb-title');
+            const fbDesc = document.getElementById('dq-fb-desc');
+
+            if (isCorrect) {
+                playSound('correct');
+                tournament.activeChestScore += 10;
+                tournament.activeChestCorrect += 1;
+
+                const team = tournament.teams[tournament.dealActiveTeam];
+                team.score += 10;
+                team.dealScore += 10;
+                team.dealRight += 1;
+                updateGlobalScoreboard();
+
+                fbPanel.className = 'mt-6 p-4 rounded-2xl border border-emerald-500/50 bg-emerald-950/50 animate-fade-pop';
+                fbIcon.textContent = '✅';
+                fbTitle.className = 'font-black text-base sm:text-lg mb-1 text-emerald-300';
+                fbTitle.textContent = `回答正確！【${team.name}】獲得 +10 分！`;
+                fbDesc.textContent = `標準答案：(${rightLetter}) ${rightText}`;
+            } else {
+                playSound('wrong');
+                fbPanel.className = 'mt-6 p-4 rounded-2xl border border-slate-600 bg-slate-800/75 animate-fade-pop';
+                fbIcon.textContent = 'ℹ️';
+                fbTitle.className = 'font-black text-base sm:text-lg mb-1 text-amber-300';
+                fbTitle.textContent = '回答錯誤（本階段答錯不扣分，得 0 分）';
+                fbDesc.innerHTML = `正確答案為：<strong class="text-emerald-300">(${rightLetter}) ${rightText}</strong>`;
+            }
+
+            document.getElementById('dq-chest-points').textContent = `${tournament.activeChestScore} 分`;
+            const nextBtn = document.getElementById('btn-dq-next');
+            nextBtn.textContent = (tournament.activeChestQIndex === 19) ? '完成本寶箱結算 🏆' : '下一題 ➔';
+            fbPanel.classList.remove('hidden');
+        }
+
+        function nextDealQuestion() {
+            if (tournament.activeChestQIndex < 19) {
+                tournament.activeChestQIndex += 1;
+                renderDealQuestion();
+            } else {
+                completeChestRound(20);
+            }
+        }
+
+        function openEndChestEarlyModal() {
+            document.getElementById('early-chest-modal').classList.remove('hidden');
+        }
+
+        function confirmEndChestEarly() {
+            document.getElementById('early-chest-modal').classList.add('hidden');
+            completeChestRound(tournament.activeChestQIndex + 1);
+        }
+
+        function completeChestRound(answeredCount) {
+            stopSpeaking();
+            playSound('fanfare');
+            const team = tournament.teams[tournament.dealActiveTeam];
+            team.dealAttempts += 1;
+
+            const chest = tournament.chests.find(c => c.id === tournament.activeChestId);
+            if (chest) {
+                chest.opened = true;
+                chest.openedByTeam = team.id;
+                chest.attemptNum = team.dealAttempts;
+                chest.score = tournament.activeChestScore;
+                chest.correct = tournament.activeChestCorrect;
+            }
+
+            tournament.dealRoundIndex += 1;
+            tournament.currentStage = 'DEAL_SUMMARY';
+            updateGlobalScoreboard();
+
+            const isAllDone = (tournament.dealRoundIndex >= 19);
+
+            document.getElementById('ds-icon').textContent = isAllDone ? '🎉' : '📦';
+            document.getElementById('ds-title').textContent = isAllDone
+                ? '階段一「一擲千金」19個寶箱全數完成！'
+                : `${team.name} — 第 ${chest.id} 號寶箱完成！`;
+            document.getElementById('ds-subtitle').textContent = isAllDone
+                ? '全部 19 個寶箱（380題）已開啟完畢，準備帶著累計積分進入「3組極速搶答賽」！'
+                : `${team.name} 已完成第 ${team.dealAttempts} 次一擲千金挑戰（全場已開 ${tournament.dealRoundIndex} / 19 箱）`;
+
+            document.getElementById('ds-single-box-stats').classList.remove('hidden');
+            document.getElementById('ds-box-correct').textContent = tournament.activeChestCorrect;
+            document.getElementById('ds-box-answered').textContent = answeredCount;
+            document.getElementById('ds-box-score').textContent = tournament.activeChestScore;
+
+            renderDealStandingsCards();
+
+            const contBtn = document.getElementById('btn-ds-continue');
+            contBtn.textContent = isAllDone
+                ? '⚡ 進入階段二：3組極速搶答賽（50題） ➔'
+                : '返回寶箱大廳繼續下一回合 ➔';
+
+            switchView('view-deal-summary');
+        }
+
+        function showStageOneCompleteSummary() {
+            tournament.currentStage = 'DEAL_SUMMARY';
+            document.getElementById('ds-icon').textContent = '🎉';
+            document.getElementById('ds-title').textContent = '階段一「一擲千金」圓滿結束！';
+            document.getElementById('ds-subtitle').textContent = '三組總積分將直接帶入「階段二：3組極速搶答賽（50題）」';
+            document.getElementById('ds-single-box-stats').classList.add('hidden');
+            renderDealStandingsCards();
+            document.getElementById('btn-ds-continue').textContent = '⚡ 進入階段二：3組極速搶答賽（50題） ➔';
+            switchView('view-deal-summary');
+        }
+
+        function renderDealStandingsCards() {
+            const grid = document.getElementById('ds-standings-grid');
+            grid.innerHTML = '';
+            const textColors = ['text-rose-400', 'text-amber-400', 'text-emerald-400'];
+
+            tournament.teams.forEach(t => {
+                const div = document.createElement('div');
+                div.className = 'p-3.5 rounded-2xl bg-slate-900 border border-slate-700';
+                div.innerHTML = `
+                    <div class="text-xs text-slate-400 font-bold mb-1">${t.name}（已開 ${t.dealAttempts} 箱）</div>
+                    <div class="text-2xl font-black ${textColors[t.id]}">${t.score} 分</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function proceedAfterDealSummary() {
+            if (tournament.dealRoundIndex >= 19 || document.getElementById('ds-single-box-stats').classList.contains('hidden')) {
+                startBuzzerStage();
+            } else {
+                enterDealLobby();
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 階段二：3組極速搶答賽（50題零重複，答對+10 / 答錯-10 不設補答）
+         * ============================================================================
+         */
+        function startBuzzerStage() {
+            tournament.currentStage = 'BUZZER';
+            tournament.bzIndex = 0;
+
+            document.getElementById('global-stage-badge').textContent = '階段二：極速搶答賽';
+            document.getElementById('global-stage-badge').className = 'px-2.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-400/40 text-sky-300 text-xs font-black';
+
+            switchView('view-buzzer-arena');
+            loadBuzzerQuestion(0);
+        }
+
+        function loadBuzzerQuestion(index) {
+            stopBuzzerTimer();
+            stopSpeaking();
+            tournament.bzIndex = index;
+            tournament.bzPhase = 'OPEN';
+            tournament.bzLockedTeam = null;
+
+            const qObj = tournament.buzzerPool[index];
+            const total = tournament.buzzerPool.length; // 50
+
+            document.getElementById('bz-progress-bar').style.width = `${((index + 1) / total) * 100}%`;
+            document.getElementById('bz-q-badge').textContent = `搶答題 ${index + 1} / ${total}`;
+            document.getElementById('bz-orig-badge').textContent = `原題庫 #${qObj.id}`;
+            document.getElementById('bz-cat-badge').textContent = `📚 ${qObj.cat}`;
+            document.getElementById('bz-question-text').textContent = qObj.q;
+
+            // 渲染選擇題選項
+            renderBuzzerChoices(qObj, false);
+            document.getElementById('bz-choices-box').classList.toggle('hidden', !tournament.bzShowChoices);
+
+            // 隱藏標準答案框
+            document.getElementById('bz-answer-box').classList.add('hidden');
+            document.getElementById('bz-no-rebound-badge').classList.add('hidden');
+
+            updateBuzzerTeamsUI();
+            updateBuzzerControlsUI();
+
+            const timerTxt = document.getElementById('bz-timer-text');
+            if (tournament.bzTimerLimit > 0) {
+                tournament.bzTimerLeft = tournament.bzTimerLimit;
+                timerTxt.textContent = `${tournament.bzTimerLimit}s（待搶答）`;
+                timerTxt.className = 'text-slate-400';
+            } else {
+                timerTxt.textContent = '不限時';
+                timerTxt.className = 'text-amber-400';
+            }
+
+            // 載入題目後自動以廣東話讀題及四個選項
+            if (ttsEnabled) {
+                speakCantoneseQuestion(qObj, false);
+            }
+        }
+
+        function renderBuzzerChoices(qObj, highlightCorrect) {
+            const grid = document.getElementById('bz-choices-grid');
+            grid.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+
+            qObj.shuffledOptions.forEach((opt, i) => {
+                const isRight = highlightCorrect && opt.isCorrect;
+                const card = document.createElement('div');
+                card.className = isRight
+                    ? 'p-3.5 rounded-xl bg-emerald-950/90 border-2 border-emerald-400 text-emerald-200 font-bold flex items-center gap-3'
+                    : 'p-3.5 rounded-xl bg-slate-800/85 border border-slate-700 text-slate-200 font-medium flex items-center gap-3';
+                card.innerHTML = `
+                    <span class="w-7 h-7 rounded-lg ${isRight ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 text-slate-400'} flex items-center justify-center font-black text-xs shrink-0">
+                        ${letters[i]}
+                    </span>
+                    <span class="text-sm sm:text-base">${opt.text}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleBuzzerChoices() {
+            tournament.bzShowChoices = !tournament.bzShowChoices;
+            document.getElementById('bz-choices-box').classList.toggle('hidden', !tournament.bzShowChoices);
+        }
+
+        function startBuzzerTimer() {
+            stopBuzzerTimer();
+            tournament.bzTimerLeft = tournament.bzTimerLimit;
+            const txt = document.getElementById('bz-timer-text');
+            txt.textContent = `${tournament.bzTimerLeft}s`;
+            txt.className = 'text-amber-400';
+
+            tournament.bzTimerHandle = setInterval(() => {
+                if (tournament.bzPhase !== 'LOCKED') {
+                    stopBuzzerTimer();
+                    return;
+                }
+                tournament.bzTimerLeft -= 1;
+                if (tournament.bzTimerLeft > 0) {
+                    txt.textContent = `${tournament.bzTimerLeft}s`;
+                    if (tournament.bzTimerLeft <= 5) {
+                        txt.className = 'text-rose-400 animate-pulse';
+                        playSound('tick');
+                    }
+                } else {
+                    txt.textContent = '0s（時間到）';
+                    txt.className = 'text-rose-500';
+                    stopBuzzerTimer();
+                    playSound('wrong');
+                    const lockedTeam = tournament.teams[tournament.bzLockedTeam];
+                    const pill = document.getElementById('bz-status-pill');
+                    pill.className = 'px-4 py-1.5 rounded-full bg-rose-600/30 border border-rose-500 text-rose-200 text-xs sm:text-sm font-black animate-pulse';
+                    pill.innerHTML = `<span>⏱️ 【${lockedTeam ? lockedTeam.name : ''}】作答時間到！請主持人判定</span>`;
+                }
+            }, 1000);
+        }
+
+        function stopBuzzerTimer() {
+            if (tournament.bzTimerHandle) {
+                clearInterval(tournament.bzTimerHandle);
+                tournament.bzTimerHandle = null;
+            }
+        }
+
+        // 觸發某組搶答
+        function triggerTeamBuzz(teamIdx) {
+            if (tournament.bzPhase !== 'OPEN') return;
+
+            stopBuzzerTimer();
+            stopSpeaking(); // 只要選擇其中一組答題，立即中止唸題
+            tournament.bzPhase = 'LOCKED';
+            tournament.bzLockedTeam = teamIdx;
+            playSound('buzz', teamIdx);
+
+            updateBuzzerTeamsUI();
+            updateBuzzerControlsUI();
+
+            // 選定搶答組別後，才開始作答倒數計時
+            if (tournament.bzTimerLimit > 0) {
+                startBuzzerTimer();
+            }
+        }
+
+        // 裁判判定：答對 (+10) 或 答錯 (-10 且不設補答！)
+        function judgeBuzzerAnswer(isCorrect) {
+            if (tournament.bzPhase !== 'LOCKED' || tournament.bzLockedTeam === null) return;
+
+            stopBuzzerTimer();
+            saveUndoState();
+
+            const team = tournament.teams[tournament.bzLockedTeam];
+            const qObj = tournament.buzzerPool[tournament.bzIndex];
+
+            if (isCorrect) {
+                playSound('correct');
+                team.score += 10;
+                team.buzzerScore += 10;
+                team.bzRight += 1;
+
+                tournament.bzPhase = 'DONE';
+                showBuzzerAnswerBox(qObj, false);
+
+                const pill = document.getElementById('bz-status-pill');
+                pill.className = 'px-4 py-1.5 rounded-full bg-emerald-500/25 border border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black';
+                pill.innerHTML = `<span>✅ 【${team.name}】回答正確，加 10 分！</span>`;
+            } else {
+                // 嚴格執行：答錯扣10分，且不設補答！本題直接作廢
+                playSound('wrong');
+                team.score -= 10;
+                team.buzzerScore -= 10;
+                team.bzWrong += 1;
+
+                tournament.bzPhase = 'DONE';
+                showBuzzerAnswerBox(qObj, true);
+
+                const pill = document.getElementById('bz-status-pill');
+                pill.className = 'px-4 py-1.5 rounded-full bg-rose-600/30 border border-rose-500 text-rose-200 text-xs sm:text-sm font-black';
+                pill.innerHTML = `<span>❌ 【${team.name}】答錯扣 10 分！不設補答，本題作廢</span>`;
+            }
+
+            updateGlobalScoreboard();
+            updateBuzzerTeamsUI();
+            updateBuzzerControlsUI();
+        }
+
+        function handleBuzzerNoBuzz(isTimeout) {
+            if (tournament.bzPhase !== 'OPEN') return;
+            stopBuzzerTimer();
+            stopSpeaking();
+            saveUndoState();
+
+            tournament.bzPhase = 'DONE';
+            const qObj = tournament.buzzerPool[tournament.bzIndex];
+            showBuzzerAnswerBox(qObj, false);
+
+            const pill = document.getElementById('bz-status-pill');
+            pill.className = 'px-4 py-1.5 rounded-full bg-slate-700/80 border border-slate-500 text-slate-200 text-xs sm:text-sm font-black';
+            pill.innerHTML = `<span>${isTimeout ? '⏱️ 搶答時間到！無人搶答' : '⏭️ 無人搶答，已揭曉標準答案'}</span>`;
+
+            updateBuzzerTeamsUI();
+            updateBuzzerControlsUI();
+        }
+
+        function revealBuzzerAnswerOnly() {
+            const qObj = tournament.buzzerPool[tournament.bzIndex];
+            showBuzzerAnswerBox(qObj, false);
+        }
+
+        function showBuzzerAnswerBox(qObj, showNoReboundWarning) {
+            document.getElementById('bz-answer-text').textContent = qObj.ans;
+            document.getElementById('bz-no-rebound-badge').classList.toggle('hidden', !showNoReboundWarning);
+            document.getElementById('bz-answer-box').classList.remove('hidden');
+            renderBuzzerChoices(qObj, true);
+        }
+
+        function nextBuzzerQuestion() {
+            if (tournament.bzIndex < tournament.buzzerPool.length - 1) {
+                loadBuzzerQuestion(tournament.bzIndex + 1);
+            } else {
+                showFinalPodium();
+            }
+        }
+
+        function updateBuzzerTeamsUI() {
+            const baseBorders = ['border-rose-500/50', 'border-amber-500/50', 'border-emerald-500/50'];
+
+            tournament.teams.forEach((t, idx) => {
+                document.getElementById(`bz-team-name-${idx}`).textContent = t.name;
+                document.getElementById(`bz-team-score-${idx}`).textContent = `${t.score} 分`;
+                document.getElementById(`bz-right-${idx}`).textContent = t.bzRight;
+                document.getElementById(`bz-wrong-${idx}`).textContent = t.bzWrong;
+
+                const card = document.getElementById(`bz-team-card-${idx}`);
+                const btn = document.getElementById(`bz-btn-${idx}`);
+
+                card.classList.remove('team-locked-ring', 'border-yellow-400', 'opacity-45');
+                card.classList.add(baseBorders[idx]);
+
+                if (tournament.bzPhase === 'OPEN') {
+                    btn.disabled = false;
+                    btn.textContent = `🔔 ${t.name} 搶答！`;
+                } else if (tournament.bzPhase === 'LOCKED') {
+                    btn.disabled = true;
+                    if (tournament.bzLockedTeam === idx) {
+                        card.classList.remove(baseBorders[idx]);
+                        card.classList.add('border-yellow-400', 'team-locked-ring');
+                        btn.textContent = `⚡ ${t.name} 正在作答！`;
+                    } else {
+                        card.classList.add('opacity-45');
+                        btn.textContent = '🔒 搶答已鎖定';
+                    }
+                } else {
+                    btn.disabled = true;
+                    card.classList.add('opacity-75');
+                    btn.textContent = '本題已結束（不設補答）';
+                }
+            });
+        }
+
+        function updateBuzzerControlsUI() {
+            const pill = document.getElementById('bz-status-pill');
+            const btnNoBuzz = document.getElementById('btn-bz-nobuzz');
+            const judgeGroup = document.getElementById('bz-judge-group');
+            const btnNext = document.getElementById('btn-bz-next');
+
+            if (tournament.bzPhase === 'OPEN') {
+                pill.className = 'px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-black flex items-center gap-2';
+                pill.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span><span>開放搶答中！</span>`;
+                btnNoBuzz.classList.remove('hidden');
+                judgeGroup.classList.add('hidden');
+                btnNext.classList.add('hidden');
+            } else if (tournament.bzPhase === 'LOCKED') {
+                const lockedTeam = tournament.teams[tournament.bzLockedTeam];
+                pill.className = 'px-4 py-1.5 rounded-full bg-yellow-500/25 border border-yellow-400 text-yellow-300 text-xs sm:text-sm font-black animate-pulse';
+                pill.innerHTML = `<span>⚡ 【${lockedTeam.name}】搶答成功！請主持人判定</span>`;
+                btnNoBuzz.classList.add('hidden');
+                judgeGroup.classList.remove('hidden');
+                btnNext.classList.add('hidden');
+            } else {
+                btnNoBuzz.classList.add('hidden');
+                judgeGroup.classList.add('hidden');
+                btnNext.classList.remove('hidden');
+                btnNext.textContent = (tournament.bzIndex === tournament.buzzerPool.length - 1)
+                    ? '查看最終頒獎台 🏆'
+                    : '進入下一題 ➔';
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 階段三：最終頒獎台結算
+         * ============================================================================
+         */
+        function showFinalPodium() {
+            stopBuzzerTimer();
+            stopSpeaking();
+            tournament.currentStage = 'PODIUM';
+            document.getElementById('global-stage-badge').textContent = '總決賽頒獎典禮';
+            playSound('fanfare');
+            triggerConfetti();
+
+            const sorted = [...tournament.teams].sort((a, b) => b.score - a.score);
+            const medals = ['🥇 總冠軍', '🥈 亞軍', '🥉 季軍'];
+            const cardBorders = [
+                'bg-gradient-to-b from-yellow-500/25 to-slate-900 border-2 border-yellow-400 md:scale-105 shadow-2xl shadow-yellow-500/20',
+                'bg-gradient-to-b from-slate-400/20 to-slate-900 border-2 border-slate-400',
+                'bg-gradient-to-b from-amber-700/25 to-slate-900 border-2 border-amber-600'
+            ];
+
+            const grid = document.getElementById('final-podium-grid');
+            grid.innerHTML = '';
+
+            sorted.forEach((t, rankIdx) => {
+                const div = document.createElement('div');
+                div.className = `rounded-3xl p-6 flex flex-col justify-between ${cardBorders[rankIdx]}`;
+                div.innerHTML = `
+                    <div>
+                        <span class="inline-block px-4 py-1 rounded-full bg-slate-950/85 text-yellow-300 font-black text-sm mb-3">
+                            ${medals[rankIdx]}
+                        </span>
+                        <h3 class="text-2xl font-black text-white mb-1">${t.name}</h3>
+                        <div class="text-4xl sm:text-5xl font-black ${t.score >= 0 ? 'text-yellow-400' : 'text-rose-400'} my-4">
+                            ${t.score} 分
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-slate-700/80 text-xs text-slate-300 space-y-1.5 text-left bg-slate-950/50 rounded-2xl p-3.5">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">💰 一擲千金得分：</span>
+                            <strong class="text-yellow-300">${t.dealScore} 分（對 ${t.dealRight} 題）</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">⚡ 極速搶答得分：</span>
+                            <strong class="${t.buzzerScore >= 0 ? 'text-sky-300' : 'text-rose-400'}">${t.buzzerScore >= 0 ? '+' : ''}${t.buzzerScore} 分（對 ${t.bzRight} / 錯 ${t.bzWrong}）</strong>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+
+            switchView('view-podium');
+        }
+
+        /**
+         * ============================================================================
+         * 裁判後台控制中心與快捷鍵監聽
+         * ============================================================================
+         */
+        function openRefereeModal() {
+            const adjContainer = document.getElementById('ref-score-adjusters');
+            adjContainer.innerHTML = '';
+            tournament.teams.forEach((t, idx) => {
+                const card = document.createElement('div');
+                card.className = 'p-3 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="text-xs font-bold text-slate-300">${t.name}</div>
+                        <div class="text-lg font-black text-yellow-400" id="ref-score-val-${idx}">${t.score} 分</div>
+                    </div>
+                    <div class="flex gap-1.5">
+                        <button onclick="refManualScore(${idx}, -10)" class="px-2.5 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-800 text-rose-200 font-black text-xs">-10</button>
+                        <button onclick="refManualScore(${idx}, 10)" class="px-2.5 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-800 text-emerald-200 font-black text-xs">+10</button>
+                    </div>
+                `;
+                adjContainer.appendChild(card);
+            });
+
+            renderRefQuestionList('ALL');
+            document.getElementById('referee-modal').classList.remove('hidden');
+        }
+
+        function closeRefereeModal() {
+            document.getElementById('referee-modal').classList.add('hidden');
+        }
+
+        function refManualScore(teamIdx, delta) {
+            saveUndoState();
+            tournament.teams[teamIdx].score += delta;
+            document.getElementById(`ref-score-val-${teamIdx}`).textContent = `${tournament.teams[teamIdx].score} 分`;
+            updateGlobalScoreboard();
+            if (tournament.currentStage === 'BUZZER') updateBuzzerTeamsUI();
+        }
+
+        function jumpToStage(target) {
+            stopBuzzerTimer();
+            stopSpeaking();
+            closeRefereeModal();
+            if (tournament.dealPool.length === 0) {
+                startFullCompetition();
+            }
+            if (target === 'DEAL_LOBBY') {
+                enterDealLobby();
+            } else if (target === 'BUZZER') {
+                startBuzzerStage();
+            } else if (target === 'PODIUM') {
+                showFinalPodium();
+            }
+        }
+
+        function renderRefQuestionList(filterType) {
+            const container = document.getElementById('ref-question-list');
+            container.innerHTML = '';
+
+            let listToShow = [];
+            if (filterType === 'DEAL' && tournament.dealPool.length > 0) {
+                listToShow = tournament.dealPool.map((q, i) => ({ ...q, tag: `階段一 ${Math.floor(i / 20) + 1}號箱 #${(i % 20) + 1}` }));
+            } else if (filterType === 'BUZZER' && tournament.buzzerPool.length > 0) {
+                listToShow = tournament.buzzerPool.map((q, i) => ({ ...q, tag: `階段二搶答 #${i + 1}` }));
+            } else {
+                listToShow = MASTER_QUESTION_BANK.map(q => ({ ...q, tag: `原題庫 #${q.id}` }));
+            }
+
+            listToShow.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'p-2.5 rounded-xl bg-slate-900/90 border border-slate-800';
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 mb-0.5">
+                        <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[11px] font-bold">${item.tag}</span>
+                        <span class="text-sky-400 font-bold">${item.cat}</span>
+                    </div>
+                    <div class="text-slate-100 font-bold mb-0.5">${item.q}</div>
+                    <div class="text-emerald-400">答案：${item.ans}</div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // 全局鍵盤快捷鍵（階段二搶答：1/Q、2/P、3/M；判定：Y/N；下一題：Space/Enter）
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+            if (tournament.currentStage !== 'BUZZER') return;
+
+            const k = e.key.toLowerCase();
+            if (tournament.bzPhase === 'OPEN') {
+                if (k === '1' || k === 'q') { e.preventDefault(); triggerTeamBuzz(0); }
+                else if (k === '2' || k === 'p') { e.preventDefault(); triggerTeamBuzz(1); }
+                else if (k === '3' || k === 'm') { e.preventDefault(); triggerTeamBuzz(2); }
+            } else if (tournament.bzPhase === 'LOCKED') {
+                if (k === 'y' || k === 'enter') { e.preventDefault(); judgeBuzzerAnswer(true); }
+                else if (k === 'n') { e.preventDefault(); judgeBuzzerAnswer(false); }
+            } else if (tournament.bzPhase === 'DONE') {
+                if (k === ' ' || k === 'enter' || k === 'arrowright') { e.preventDefault(); nextBuzzerQuestion(); }
+            }
+        });
+
+        // 彩帶慶祝特效
+        function triggerConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const colors = ['#facc15', '#f43f5e', '#10b981', '#38bdf8', '#a855f7'];
+            const particles = Array.from({ length: 120 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height - canvas.height,
+                r: Math.random() * 6 + 4,
+                d: Math.random() * 40 + 10,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                tilt: Math.random() * 10 - 5,
+                tiltAngle: 0,
+                tiltAngleInc: Math.random() * 0.08 + 0.04
+            }));
+
+            let frame = 0;
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.tiltAngle += p.tiltAngleInc;
+                    p.y += (Math.cos(p.d) + 3 + p.r / 2) * 0.9;
+                    p.x += Math.sin(p.tiltAngle) * 1.5;
+                    ctx.beginPath();
+                    ctx.lineWidth = p.r;
+                    ctx.strokeStyle = p.color;
+                    ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+                    ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+                    ctx.stroke();
+                });
+                frame++;
+                if (frame < 160) requestAnimationFrame(draw);
+                else ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            draw();
+        }
+    </script>
+</body>
+</html>
